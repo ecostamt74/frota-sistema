@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Novo Motorista{% endblock %}
+{% block page_title %}Novo Motorista{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Cadastrar Motorista</div>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" name="nome" required style="text-transform: uppercase;">
+            </div>
+            <div class="form-group">
+                <label>CPF (somente números)</label>
+                <input type="text" name="cpf" required maxlength="11">
+            </div>
+            <div class="form-group">
+                <label>Número da CNH</label>
+                <input type="text" name="cnh">
+            </div>
+            <div class="form-group">
+                <label>Categoria da CNH (Ex: E, AB)</label>
+                <input type="text" name="categoria" maxlength="5">
+            </div>
+            <div class="form-group">
+                <label>Validade da CNH</label>
+                <input type="date" name="validade_cnh">
+            </div>
+            <div class="form-group">
+                <label>Telefone</label>
+                <input type="text" name="telefone">
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar Motorista</button>
+            <a href="{{ url_for('listar_motoristas') }}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

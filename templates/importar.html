@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Importar{% endblock %}
+{% block page_title %}Importar Dados{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header"><div class="card-title">Upload de Planilha</div></div>
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Arquivo Excel (.xlsx)</label>
+                <input type="file" name="arquivo" accept=".xlsx" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Importar</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

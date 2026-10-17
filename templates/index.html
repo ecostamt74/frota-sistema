@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Painel{% endblock %}
+{% block page_title %}Painel{% endblock %}
+{% block content %}
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-header">Caminhoes</div>
+        <div class="kpi-value">{{ total_caminhoes }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-header">Motoristas</div>
+        <div class="kpi-value">{{ total_motoristas }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-header">Notas</div>
+        <div class="kpi-value">{{ total_notas }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-header">Abastecimentos</div>
+        <div class="kpi-value">{{ total_abastecimentos }}</div>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header"><div class="card-title">Bem-vindo ao Sistema</div></div>
+    <div class="card-body">
+        <p>Use o menu lateral para navegar entre os modulos do sistema.</p>
+        <p>Comece cadastrando <a href="{{ url_for('listar_motoristas') }}">motoristas</a>
+        e <a href="{{ url_for('listar_caminhoes') }}">caminhoes</a>.</p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Caminhões{% endblock %}
+{% block page_title %}Caminhões{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="card-title">Lista de Caminhões</div>
+        <a href="{{ url_for('novo_caminhao') }}" class="btn btn-primary">+ Novo Caminhão</a>
+    </div>
+    <div class="card-body" style="padding:0">
+        {% if caminhoes %}
+        <table>
+            <thead>
+                <tr><th>Placa</th><th>Modelo</th><th>KM Atual</th><th>Status Óleo</th></tr>
+            </thead>
+            <tbody>
+                {% for c in caminhoes %}
+                <tr>
+                    <td><strong>{{ c.placa }}</strong></td>
+                    <td>{{ c.marca or "" }} {{ c.modelo or "" }}</td>
+                    <td>{{ "{:,}".format(c.km_atual or 0).replace(",", ".") }} km</td>
+                    <td>
+                        {% if c.precisa_trocar_oleo() %}
+                            <span class="badge badge-danger">Trocar</span>
+                        {% else %}
+                            <span class="badge badge-success">OK</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3>Nenhum caminhão cadastrado</h3>
+            <p>Clique no botão "+ Novo Caminhão" no canto superior direito para começar.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

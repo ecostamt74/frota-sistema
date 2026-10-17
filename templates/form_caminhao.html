@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Novo Caminhão{% endblock %}
+{% block page_title %}Novo Caminhão{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Cadastrar Caminhão</div>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="form-group">
+                <label>Placa (sem hífen, ex: ABC1234)</label>
+                <input type="text" name="placa" required style="text-transform: uppercase;">
+            </div>
+            <div class="form-group">
+                <label>Marca (Ex: Volvo, Scania)</label>
+                <input type="text" name="marca">
+            </div>
+            <div class="form-group">
+                <label>Modelo (Ex: FH 460)</label>
+                <input type="text" name="modelo">
+            </div>
+            <div class="form-group">
+                <label>Ano</label>
+                <input type="number" name="ano" min="1980" max="2030">
+            </div>
+            <div class="form-group">
+                <label>KM Atual</label>
+                <input type="number" name="km_atual" value="0">
+            </div>
+            <div class="form-group">
+                <label>Intervalo de Troca de Óleo (KM)</label>
+                <input type="number" name="intervalo_troca_oleo" value="10000">
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar Caminhão</button>
+            <a href="{{ url_for('listar_caminhoes') }}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
