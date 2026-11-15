@@ -205,7 +205,7 @@ def baixar_romaneios_antigos():
         db.session.rollback()
         return f"❌ Erro ao baixar romaneios: {e}"
 
-# --- IMPORTAR XML DA NF ---
+# --- IMPORTAR XML DA NF (Com Lógica de Baixa Parcial e Residual) ---
 @app.route('/importar-xml-nfe', methods=['POST'])
 @login_required
 def importar_xml_nfe():
@@ -233,18 +233,56 @@ def importar_xml_nfe():
                 Romaneio.data_criacao >= data_corte
             ).order_by(Romaneio.id.asc()).all()
 
-            saldo_restante = qCom
+            saldo_restante_nota = qCom
+            total_baixado = 0.0
+
             for r in pendentes:
-                if saldo_restante <= 0: break
+                if saldo_restante_nota <= 0: 
+                    break
+                
                 if r.dif_peso > 0:
-                    r.status = 'Faturado'
-                    r.chave_complementar = chave
-                    saldo_restante -= r.dif_peso
+                    if r.dif_peso <= saldo_restante_nota:
+                        r.status = 'Faturado'
+                        r.chave_complementar = chave
+                        saldo_restante_nota -= r.dif_peso
+                        total_baixado += r.dif_peso
+                    else:
+                        ton_baixada = saldo_restante_nota
+                        r.status = 'Faturado'
+                        r.chave_complementar = chave
+                        r.peso_real = r.peso_fisco + ton_baixada 
+                        
+                        novo_residual = Romaneio(
+                            numero_romaneio=f"{r.numero_romaneio}-RES",
+                            numero_nota_original=r.numero_nota_original,
+                            peso_fisco=r.peso_fisco,
+                            peso_real=r.peso_fisco + (r.dif_peso - ton_baixada),
+                            valor_tonelada=r.valor_tonelada,
+                            status='Pendente Complemento',
+                            data_criacao=datetime.now(),
+                            motorista_id=r.motorista_id,
+                            conjunto_id=r.conjunto_id
+                        )
+                        db.session.add(novo_residual)
+                        
+                        saldo_restante_nota = 0
+                        total_baixado += ton_baixada
+                        break
             
-            novo_fechamento = FechamentoAcerto(chave_nota=chave, total_toneladas=qCom, total_valor=vProd)
+            novo_fechamento = FechamentoAcerto(
+                chave_nota=chave, 
+                total_toneladas=total_baixado, 
+                total_valor=vProd,
+                tipo='Complementar'
+            )
             db.session.add(novo_fechamento)
             db.session.commit()
-            flash(f'✅ NF Complementar {nNF} importada! Saldo de {qCom}t baixado.', 'success')
+            
+            msg = f'✅ NF Complementar {nNF} importada! {total_baixado:.3f}t baixadas.'
+            if saldo_restante_nota > 0:
+                msg += f' Atenção: Sobraram {saldo_restante_nota:.3f}t na nota sem romaneios correspondentes.'
+            flash(msg, 'success')
+            
         else:
             flash(f'ℹ️ NF de Venda {nNF} (45t) importada. Ela não dá baixa no saldo.', 'info')
 
@@ -460,19 +498,16 @@ def importar_novembro():
         with open('dados_novembro.json', 'r', encoding='utf-8') as f:
             dados = json.load(f)
 
-        # 1. Importa Motoristas
         for m in dados.get("motoristas", []):
             if not Motorista.query.filter_by(cpf=m["cpf"]).first():
                 db.session.add(Motorista(**m))
         db.session.commit()
 
-        # 2. Importa Conjuntos
         for c in dados.get("conjuntos", []):
             if not ConjuntoVeicular.query.filter_by(placa_tracionador=c["placa_tracionador"]).first():
                 db.session.add(ConjuntoVeicular(**c))
         db.session.commit()
 
-        # 3. Importa Romaneios
         count = 0
         for r in dados.get("romaneios", []):
             if not Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first():
