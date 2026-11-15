@@ -39,19 +39,33 @@ def load_user(uid): return Usuario.query.get(int(uid))
 os.makedirs('instance', exist_ok=True)
 os.makedirs('uploads', exist_ok=True)
 
+# --- INICIALIZAÇÃO SEGURA (NÃO TRAVA SE O BANCO ESTIVER ANTIGO) ---
 with app.app_context():
     db.create_all()
-    if not Usuario.query.filter_by(username='admin').first():
-        u = Usuario(username='admin', nome='Admin')
-        u.set_senha('admin123')
-        db.session.add(u)
-    if not ConfiguracaoEmpresa.query.first():
-        db.session.add(ConfiguracaoEmpresa())
-    db.session.commit()
+    try:
+        if not Usuario.query.filter_by(username='admin').first():
+            u = Usuario(username='admin', nome='Admin')
+            u.set_senha('admin123')
+            db.session.add(u)
+            db.session.commit()
+    except Exception as e:
+        print(f"Aviso ao criar usuário: {e}")
+
+    try:
+        if not ConfiguracaoEmpresa.query.first():
+            db.session.add(ConfiguracaoEmpresa())
+            db.session.commit()
+    except Exception as e:
+        print(f"Aviso ao criar configuração (provavelmente banco antigo): {e}")
 
 @app.context_processor
 def inject_globals():
-    config = ConfiguracaoEmpresa.query.first()
+    try:
+        config = ConfiguracaoEmpresa.query.first()
+        nome_empresa = config.nome_fantasia if config else 'MTI Frotas'
+    except Exception:
+        nome_empresa = 'MTI Frotas'
+        
     grupos = {}
     menus = [
         {"titulo": "📊 Painel", "endpoint": "index", "grupo": "Operação"},
@@ -68,7 +82,7 @@ def inject_globals():
     for m in menus:
         if m['grupo'] not in grupos: grupos[m['grupo']] = []
         grupos[m['grupo']].append(m)
-    return {'menus_agrupados': grupos, 'nome_empresa': config.nome_fantasia if config else 'MTI Frotas'}
+    return {'menus_agrupados': grupos, 'nome_empresa': nome_empresa}
 
 # --- AUTENTICAÇÃO ---
 @app.route('/login', methods=['GET', 'POST'])
@@ -264,7 +278,6 @@ def configuracoes():
 # --- ROTA SECRETA PARA IMPORTAR OS DADOS DO JSON ---
 @app.route('/rota-secreta-importacao')
 def rota_secreta_importacao():
-    from models import Motorista, Caminhao, ConjuntoVeicular, Romaneio, ConfiguracaoEmpresa
     try:
         if not os.path.exists('dados_backup.json'):
             return "❌ Arquivo 'dados_backup.json' não encontrado no servidor."
@@ -311,7 +324,6 @@ def rota_secreta_importacao():
 # --- ROTA PARA RESETAR O BANCO NA NUVEM ---
 @app.route('/resetar-banco-nuvem')
 def resetar_banco_nuvem():
-    from models import db
     try:
         db.drop_all()
         db.create_all()
