@@ -1,0 +1,36 @@
+{% extends "base.html" %}{% block page_title %}Controle de Romaneios{% endblock %}{% block content %}
+<h1>Controle de Faturamento</h1>
+<p style="color: #666;">Para fechar o acerto de um período, acesse o menu <strong>"💰 Saldo Pendente"</strong>.</p>
+
+<div style="background:#fff3cd; padding:15px; border-radius:8px; margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+    <a href="{{ url_for('relatorio_simples_excel') }}" class="btn btn-success">📥 Relatório Simples</a>
+    <a href="{{ url_for('relatorio_espelho_excel') }}" class="btn btn-primary">📊 Relatório Espelho</a>
+</div>
+
+<div class="card" style="margin-top:20px;">
+    <div class="card-header">
+        <span>Lista de Romaneios</span>
+        <input type="text" id="filtro" onkeyup="filtrarTabela()" placeholder="Buscar por nº..." style="padding: 8px; border-radius: 6px;">
+    </div>
+    <div class="table-responsive">
+        <table id="tabelaRomaneios">
+            <thead>
+                <tr><th>Romaneio</th><th>Motorista</th><th>Peso Fisco</th><th>Peso Real</th><th>Diferença</th><th>Status</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+                {% for r in romaneios %}
+                <tr>
+                    <td><strong>#{{ r.numero_romaneio }}</strong></td>
+                    <td>{{ r.motorista.nome if r.motorista else '-' }}</td>
+                    <td>{{ r.peso_fisco }}t</td>
+                    <td>{{ r.peso_real or '-' }}t</td>
+                    <td style="color:{{ 'red' if r.dif_peso > 0 else 'green' }}; font-weight: bold;">{{ "%.3f"|format(r.dif_peso) }}t</td>
+                    <td>{{ r.status }}</td>
+                    <td><a href="{{ url_for('detalhe_romaneio', id=r.id) }}" class="btn btn-primary" style="padding:5px 10px; font-size:12px;">Abrir</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
