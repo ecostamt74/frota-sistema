@@ -1,45 +1,18 @@
 {% extends "base.html" %}{% block page_title %}Controle de Romaneios{% endblock %}{% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <h2 style="margin: 0;">Controle de Faturamento</h2>
+<h1>Controle de Faturamento</h1>
+<p style="color: #666;">Para realizar o fechamento de acerto, acesse o menu <strong>"Saldo Pendente"</strong>.</p>
+
+<div style="background:#fff3cd; padding:15px; border-radius:8px; margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+    <a href="{{ url_for('relatorio_simples_excel') }}" class="btn btn-success">📥 Relatório Simples</a>
+    <a href="{{ url_for('relatorio_espelho_excel') }}" class="btn btn-primary">📊 Relatório Espelho</a>
+    
+    <form method="POST" action="{{ url_for('importar_planilha') }}" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center; margin-left: auto;">
+        <input type="file" name="arquivo_excel" accept=".xlsx" required style="padding: 5px; border: 1px solid #ccc; border-radius: 5px;">
+        <button type="submit" class="btn" style="background: #8b5cf6; color: white;">📥 Importar Planilha</button>
+    </form>
 </div>
 
-<!-- PAINEL DE AÇÕES -->
-<div class="card" style="background: #fff3cd; border: 1px solid #ffecb5; margin-bottom: 20px;">
-    <div class="card-body" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
-        
-        <!-- Botões de Relatório -->
-        <div>
-            <label style="font-size: 12px; font-weight: bold; color: #664d03;">Relatórios</label><br>
-            <a href="{{ url_for('relatorio_simples_excel') }}" class="btn btn-success" style="margin-top: 5px;">📥 Relatório Simples</a>
-            <a href="{{ url_for('relatorio_espelho_excel') }}" class="btn btn-primary" style="margin-top: 5px;">📊 Relatório Espelho</a>
-        </div>
-
-        <!-- Importar Planilha -->
-        <div style="border-left: 1px solid #ffecb5; padding-left: 15px;">
-            <form method="POST" action="{{ url_for('importar_planilha') }}" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: flex-end;">
-                <div>
-                    <label style="font-size: 12px; font-weight: bold; color: #664d03;">Importar Planilha Histórica</label><br>
-                    <input type="file" name="arquivo_excel" accept=".xlsx" required style="padding: 5px; border: 1px solid #ccc; border-radius: 5px; background: white;">
-                </div>
-                <button type="submit" class="btn" style="background: #8b5cf6; color: white;">📥 Importar</button>
-            </form>
-        </div>
-
-        <!-- Fechar Acerto -->
-        <div style="border-left: 1px solid #ffecb5; padding-left: 15px; margin-left: auto;">
-            <form method="POST" action="{{ url_for('fechar_acerto') }}" style="display: flex; gap: 10px; align-items: flex-end;">
-                <div>
-                    <label style="font-size: 12px; font-weight: bold; color: #664d03;">Chave da Nota Complementar</label><br>
-                    <input type="text" name="chave_complementar" placeholder="Cole a chave aqui" required style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
-                </div>
-                <button type="submit" class="btn btn-danger">Fechar Acerto Global</button>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- BUSCA E TABELA -->
-<div class="card">
+<div class="card" style="margin-top:20px;">
     <div class="card-header">
         <span>Lista de Romaneios</span>
         <input type="text" id="filtro" onkeyup="filtrarTabela()" placeholder="Buscar por nº ou motorista..." style="padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; width: 300px;">
