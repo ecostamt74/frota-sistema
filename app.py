@@ -38,7 +38,7 @@ os.makedirs('instance', exist_ok=True)
 os.makedirs('uploads', exist_ok=True)
 os.makedirs(os.path.join('static', 'img'), exist_ok=True)
 
-# --- INICIALIZAÇÃO BLINDADA (Não trava se o banco estiver velho) ---
+# --- INICIALIZAÇÃO BLINDADA ---
 with app.app_context():
     db.create_all()
     try:
@@ -65,7 +65,7 @@ def inject_globals():
         if config:
             nome_empresa = config.nome_fantasia
     except Exception:
-        pass # Se o banco estiver quebrado, ignora e usa o padrão
+        pass 
         
     grupos = {}
     menus = [
@@ -133,7 +133,7 @@ def listar_romaneios(): return render_template('romaneios.html', romaneios=Roman
 @login_required
 def detalhe_romaneio(id): return render_template('romaneio_detalhe.html', romaneio=Romaneio.query.get_or_404(id))
 
-# --- SALDO PENDENTE ---
+# --- SALDO PENDENTE E RELATÓRIOS ---
 @app.route('/saldo-pendente')
 @login_required
 def saldo_pendente():
@@ -160,7 +160,28 @@ def fechar_saldo():
     flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados.', 'success')
     return redirect(url_for('saldo_pendente'))
 
-# --- RELATÓRIOS ---
+@app.route('/relatorio-saldo-pdf')
+@login_required
+def relatorio_saldo_pdf():
+    try:
+        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+        if not pendentes:
+            flash('Não há romaneios pendentes.', 'warning')
+            return redirect(url_for('saldo_pendente'))
+
+        config = ConfiguracaoEmpresa.query.first()
+        logo_filename = config.logo_filename if config else 'logo_padrao.png'
+        total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
+        total_valor = sum(r.dif_valor for r in pendentes)
+        
+        from services.gerador_pdf import gerar_pdf_saldo
+        pdf_buffer = gerar_pdf_saldo(pendentes, total_ton, total_valor, logo_filename)
+        
+        return send_file(pdf_buffer, as_attachment=True, download_name="Relatorio_Saldo_Pendente.pdf", mimetype="application/pdf")
+    except Exception as e:
+        flash(f'Erro ao gerar PDF: {e}', 'danger')
+        return redirect(url_for('saldo_pendente'))
+
 @app.route('/relatorio-simples-excel')
 @login_required
 def relatorio_simples_excel():
@@ -237,7 +258,7 @@ def configuracoes():
         flash(f'Erro nos parâmetros: {e}', 'danger')
         return redirect(url_for('index'))
 
-# --- ESTOQUE E CUSTOS (Simplificados para não travar) ---
+# --- ESTOQUE E CUSTOS ---
 @app.route('/estoque')
 @login_required
 def painel_estoque(): return render_template('estoque.html', movimentos=[], total_entrada=0, total_saida=0, saldo_atual=0)
@@ -278,7 +299,6 @@ def rota_secreta_importacao():
         with open('dados_backup.json', 'r', encoding='utf-8') as f:
             dados = json.load(f)
         
-        # (Simplificado para importar o essencial)
         for m in dados.get("motoristas", []):
             if not Motorista.query.filter_by(cpf=m["cpf"]).first():
                 db.session.add(Motorista(**m))
