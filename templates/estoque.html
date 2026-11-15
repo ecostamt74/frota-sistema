@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% block page_title %}Gestão de Estoque{% endblock %}{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+    <div class="card" style="border-top: 4px solid #16a34a; margin-bottom: 0;">
+        <div class="card-body">
+            <div style="color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase;">Total Entradas (Transf.)</div>
+            <div style="font-size: 32px; font-weight: 700; color: #166534; margin: 5px 0;">{{ "%.3f"|format(total_entrada or 0) }}t</div>
+        </div>
+    </div>
+    <div class="card" style="border-top: 4px solid #dc2626; margin-bottom: 0;">
+        <div class="card-body">
+            <div style="color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase;">Total Saídas (Vendas)</div>
+            <div style="font-size: 32px; font-weight: 700; color: #991b1b; margin: 5px 0;">{{ "%.3f"|format(total_saida or 0) }}t</div>
+        </div>
+    </div>
+    <div class="card" style="border-top: 4px solid #0ea5e9; margin-bottom: 0;">
+        <div class="card-body">
+            <div style="color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase;">Saldo em Estoque (MT)</div>
+            <div style="font-size: 32px; font-weight: 700; color: #0369a1; margin: 5px 0;">{{ "%.3f"|format(saldo_atual or 0) }}t</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Kardex (Histórico de Movimentações)</div>
+    <div class="table-responsive">
+        <table>
+            <thead><tr><th>Data</th><th>Tipo</th><th>Documento Ref.</th><th>Quantidade</th></tr></thead>
+            <tbody>
+                {% for m in movimentos %}
+                <tr>
+                    <td>{{ m.data.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>
+                        {% if m.tipo == 'Entrada' %}<span style="color: #16a34a; font-weight: bold;">Entrada</span>
+                        {% else %}<span style="color: #dc2626; font-weight: bold;">Saída</span>{% endif %}
+                    </td>
+                    <td style="font-size: 12px; color: #64748b;">{{ m.documento_ref or '-' }}</td>
+                    <td>{{ "%.3f"|format(m.quantidade_ton) }}t</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px;">Nenhum movimento de estoque.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

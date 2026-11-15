@@ -1,34 +1,6 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Login - Sistema de Frota</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-<div class="login-container">
-    <div class="login-box">
-        <h1>Sistema de Frota</h1>
-        <p>Acesso restrito</p>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for cat, msg in messages %}
-                <div class="flash {{ cat }}">{{ msg }}</div>
-            {% endfor %}
-        {% endwith %}
-
-        <form method="POST">
-            <div class="form-group">
-                <label>Usuario</label>
-                <input type="text" name="username" required autofocus>
-            </div>
-            <div class="form-group">
-                <label>Senha</label>
-                <input type="password" name="password" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Entrar</button>
-        </form>
-    </div>
-</div>
-</body>
-</html>
+<form method="POST" style="padding:40px; background:white; margin:100px auto; width:300px; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:8px;">
+    <h2>Login MTI Frotas</h2>
+    <input name="username" placeholder="Usuário" required style="width:100%; padding:8px; margin-bottom:10px;"><br>
+    <input type="password" name="password" placeholder="Senha" required style="width:100%; padding:8px; margin-bottom:15px;"><br>
+    <button type="submit" style="width:100%; padding:10px; background:#0ea5e9; color:white; border:none; border-radius:5px;">Entrar</button>
+</form>

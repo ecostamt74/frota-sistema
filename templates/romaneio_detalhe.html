@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block content %}
+<h1>Romaneio #{{ romaneio.numero_romaneio }}</h1>
+<div style="background:white;padding:20px;border-radius:8px;margin-top:20px;">
+    <h3>Lançamento Manual de Peso</h3>
+    <form method="POST" action="{{ url_for('lancar_peso_manual', id=romaneio.id) }}">
+        <input type="text" name="peso_real_manual" placeholder="Ex: 49.40" value="{{ romaneio.peso_real or '' }}" style="padding:8px;">
+        <button type="submit" style="background:green;color:white;padding:8px 15px;border:none;">Salvar Peso</button>
+    </form>
+    <hr>
+    <p><strong>Peso Fisco:</strong> {{ romaneio.peso_fisco }}t</p>
+    <p><strong>Peso Real:</strong> {{ romaneio.peso_real or '0' }}t</p>
+    <p><strong>Diferença:</strong> {{ "%.3f"|format(romaneio.dif_peso) }}t</p>
+    <p><strong>Valor a Complementar:</strong> R$ {{ "%.2f"|format(romaneio.dif_valor) }}</p>
+</div>
+{% endblock %}

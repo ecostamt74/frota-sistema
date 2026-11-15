@@ -1,6 +1,62 @@
-{% extends "base.html" %}
-{% block title %}Abastecimentos{% endblock %}
-{% block page_title %}Abastecimentos{% endblock %}
-{% block content %}
-<div class="card"><div class="card-body"><p>Nenhum abastecimento registrado.</p></div></div>
+{% extends "base.html" %}{% block page_title %}Controle de Abastecimento{% endblock %}{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+    <!-- Formulário -->
+    <div class="card">
+        <div class="card-header">Novo Abastecimento</div>
+        <div class="card-body">
+            <form method="POST">
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 13px; font-weight: 500; color: #64748b;">Caminhão</label>
+                    <select name="caminhao_id" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 5px;">
+                        {% for c in caminhoes %}<option value="{{ c.id }}">{{ c.placa }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 13px; font-weight: 500; color: #64748b;">Data</label>
+                    <input type="date" name="data" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 5px;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div>
+                        <label style="font-size: 13px; font-weight: 500; color: #64748b;">KM Atual</label>
+                        <input type="number" name="km_atual" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 5px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; font-weight: 500; color: #64748b;">Litros</label>
+                        <input type="number" step="0.01" name="litros" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 5px;">
+                    </div>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="font-size: 13px; font-weight: 500; color: #64748b;">Valor Total (R$)</label>
+                    <input type="number" step="0.01" name="valor_total" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 5px;">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Registro</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Histórico -->
+    <div class="card">
+        <div class="card-header">Histórico de Abastecimentos</div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr><th>Data</th><th>Caminhão</th><th>KM</th><th>Litros</th><th>Valor</th></tr>
+                </thead>
+                <tbody>
+                    {% for a in abastecimentos %}
+                    <tr>
+                        <td>{{ a.data.strftime('%d/%m/%Y') }}</td>
+                        <td><strong>{{ a.caminhao.placa }}</strong></td>
+                        <td>{{ a.km_atual }}</td>
+                        <td>{{ a.litros }} L</td>
+                        <td style="color: #dc2626; font-weight: bold;">R$ {{ "%.2f"|format(a.valor_total) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 20px;">Nenhum abastecimento registrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% endblock %}

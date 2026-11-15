@@ -1,36 +1,35 @@
-{% extends "base.html" %}
-{% block title %}Motoristas{% endblock %}
-{% block page_title %}Motoristas{% endblock %}
-
-{% block content %}
+{% extends "base.html" %}{% block page_title %}Gestão de Motoristas{% endblock %}{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="margin: 0;">Motoristas</h2>
+    <a href="{{ url_for('novo_motorista') }}" class="btn btn-primary">+ Novo Motorista</a>
+</div>
 <div class="card">
-    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <div class="card-title">Lista de Motoristas</div>
-        <a href="{{ url_for('novo_motorista') }}" class="btn btn-primary">+ Novo Motorista</a>
-    </div>
-    <div class="card-body" style="padding:0">
-        {% if motoristas %}
+    <div class="table-responsive">
         <table>
             <thead>
-                <tr><th>Nome</th><th>CPF</th><th>CNH</th><th>Validade</th></tr>
+                <tr>
+                    <th>Nome</th>
+                    <th>CPF</th>
+                    <th>CNH</th>
+                    <th>Ações</th>
+                </tr>
             </thead>
             <tbody>
                 {% for m in motoristas %}
                 <tr>
                     <td><strong>{{ m.nome }}</strong></td>
                     <td>{{ m.cpf }}</td>
-                    <td>{{ m.cnh or "-" }}</td>
-                    <td>{{ m.validade_cnh.strftime("%d/%m/%Y") if m.validade_cnh else "-" }}</td>
+                    <td>{{ m.cnh or '-' }}</td>
+                    <td>
+                        <!-- O BOTÃO CORRIGIDO ESTÁ AQUI -->
+                        <a href="{{ url_for('editar_motorista', id=m.id) }}" class="btn btn-primary" style="padding: 5px 10px; font-size: 12px;">Editar</a>
+                    </td>
                 </tr>
+                {% else %}
+                <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px;">Nenhum motorista cadastrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
-        {% else %}
-        <div class="empty-state">
-            <h3>Nenhum motorista cadastrado</h3>
-            <p>Clique no botão "+ Novo Motorista" no canto superior direito para começar.</p>
-        </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}

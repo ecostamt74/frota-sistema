@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% block page_title %}Editar Conjunto{% endblock %}{% block content %}
+<div class="card" style="max-width: 600px;">
+    <div class="card-header">Editar Conjunto Veicular</div>
+    <div class="card-body">
+        <form method="POST">
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: #64748b; font-weight: 500;">Nome do Conjunto</label>
+                <input type="text" name="nome_conjunto" value="{{ conjunto.nome_conjunto }}" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 5px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: #64748b; font-weight: 500;">Placa Tracionador (Cavalo)</label>
+                <input type="text" name="placa_tracionador" value="{{ conjunto.placa_tracionador }}" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 5px;">
+            </div>
+            
+            <label style="font-size: 13px; color: #64748b; font-weight: 500;">Reboques (Carretas / Dolly)</label>
+            <div id="reboques-container" style="margin-top: 5px; margin-bottom: 15px;">
+                {% set lista = conjunto.placa_carreta1.split(',') if conjunto.placa_carreta1 else [] %}
+                {% for placa in lista %}
+                    <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                        <input type="text" name="reboques[]" value="{{ placa }}" style="width: 85%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        <button type="button" onclick="this.parentElement.remove()" style="width: 15%; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">X</button>
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="button" onclick="adicionarReboque()" style="background: #16a34a; color: white; padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">+ Adicionar Reboque</button>
+            <br>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Alterações</button>
+            <a href="{{ url_for('listar_conjuntos') }}" style="display: block; text-align: center; margin-top: 10px; color: #64748b; text-decoration: none;">Cancelar</a>
+        </form>
+    </div>
+</div>
+<script>
+function adicionarReboque() {
+    const container = document.getElementById('reboques-container');
+    const div = document.createElement('div');
+    div.style.display = 'flex'; div.style.gap = '5px'; div.style.marginBottom = '5px';
+    div.innerHTML = `<input type="text" name="reboques[]" placeholder="Nova Placa" style="width:85%; padding:10px; border:1px solid #e2e8f0; border-radius:6px;"><button type="button" onclick="this.parentElement.remove()" style="width:15%; background:#dc2626; color:white; border:none; border-radius:6px; font-weight:bold;">X</button>`;
+    container.appendChild(div);
+}
+</script>
+{% endblock %}

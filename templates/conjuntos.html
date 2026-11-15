@@ -1,0 +1,44 @@
+{% extends "base.html" %}{% block content %}
+<h1>Conjuntos Veiculares</h1>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div class="card">
+        <div class="card-header">Cadastrar Novo</div>
+        <div class="card-body">
+            <form method="POST">
+                <label>Nome do Conjunto:</label><input type="text" name="nome_conjunto" required style="width:100%; margin-bottom:10px;"><br>
+                <label>Placa Tracionador:</label><input type="text" name="placa_tracionador" required style="width:100%; margin-bottom:10px;"><br>
+                <div id="reboques-container">
+                    <label>Reboques:</label>
+                    <div style="display:flex; gap:5px; margin-bottom:5px;">
+                        <input type="text" name="reboques[]" placeholder="Placa do Reboque" style="width:80%;">
+                        <button type="button" onclick="adicionarReboque()" style="width:20%; background:green; color:white; border:none;">+</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top:15px;">Salvar Conjunto</button>
+            </form>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">Conjuntos Cadastrados</div>
+        <div class="card-body">
+            <ul>
+                {% for c in conjuntos %}
+                <li style="margin-bottom:10px;">
+                    <strong>{{ c.nome_conjunto }}</strong> - Cavalo: {{ c.placa_tracionador }}<br>
+                    <small>Reboques: {{ c.placa_carreta1 }}</small>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+<script>
+function adicionarReboque() {
+    const container = document.getElementById('reboques-container');
+    const div = document.createElement('div');
+    div.style.display = 'flex'; div.style.gap = '5px'; div.style.marginBottom = '5px';
+    div.innerHTML = `<input type="text" name="reboques[]" placeholder="Placa" style="width:80%;"><button type="button" onclick="this.parentElement.remove()" style="width:20%; background:red; color:white; border:none;">-</button>`;
+    container.appendChild(div);
+}
+</script>
+{% endblock %}

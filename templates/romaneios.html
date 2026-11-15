@@ -1,0 +1,104 @@
+{% extends "base.html" %}{% block page_title %}Controle de Romaneios{% endblock %}{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="margin: 0;">Controle de Faturamento</h2>
+</div>
+
+<!-- PAINEL DE AÇÕES -->
+<div class="card" style="background: #fff3cd; border: 1px solid #ffecb5; margin-bottom: 20px;">
+    <div class="card-body" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+        
+        <!-- Botões de Relatório -->
+        <div>
+            <label style="font-size: 12px; font-weight: bold; color: #664d03;">Relatórios</label><br>
+            <a href="{{ url_for('relatorio_simples_excel') }}" class="btn btn-success" style="margin-top: 5px;">📥 Relatório Simples</a>
+            <a href="{{ url_for('relatorio_espelho_excel') }}" class="btn btn-primary" style="margin-top: 5px;">📊 Relatório Espelho</a>
+        </div>
+
+        <!-- Importar Planilha -->
+        <div style="border-left: 1px solid #ffecb5; padding-left: 15px;">
+            <form method="POST" action="{{ url_for('importar_planilha') }}" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: flex-end;">
+                <div>
+                    <label style="font-size: 12px; font-weight: bold; color: #664d03;">Importar Planilha Histórica</label><br>
+                    <input type="file" name="arquivo_excel" accept=".xlsx" required style="padding: 5px; border: 1px solid #ccc; border-radius: 5px; background: white;">
+                </div>
+                <button type="submit" class="btn" style="background: #8b5cf6; color: white;">📥 Importar</button>
+            </form>
+        </div>
+
+        <!-- Fechar Acerto -->
+        <div style="border-left: 1px solid #ffecb5; padding-left: 15px; margin-left: auto;">
+            <form method="POST" action="{{ url_for('fechar_acerto') }}" style="display: flex; gap: 10px; align-items: flex-end;">
+                <div>
+                    <label style="font-size: 12px; font-weight: bold; color: #664d03;">Chave da Nota Complementar</label><br>
+                    <input type="text" name="chave_complementar" placeholder="Cole a chave aqui" required style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                </div>
+                <button type="submit" class="btn btn-danger">Fechar Acerto Global</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- BUSCA E TABELA -->
+<div class="card">
+    <div class="card-header">
+        <span>Lista de Romaneios</span>
+        <input type="text" id="filtro" onkeyup="filtrarTabela()" placeholder="Buscar por nº ou motorista..." style="padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; width: 300px;">
+    </div>
+    <div class="table-responsive">
+        <table id="tabelaRomaneios">
+            <thead>
+                <tr>
+                    <th>Romaneio</th>
+                    <th>Motorista</th>
+                    <th>Peso Fisco</th>
+                    <th>Peso Real</th>
+                    <th>Diferença</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in romaneios %}
+                <tr>
+                    <td><strong>#{{ r.numero_romaneio }}</strong></td>
+                    <td>{{ r.motorista.nome if r.motorista else '-' }}</td>
+                    <td>{{ r.peso_fisco }}t</td>
+                    <td>{{ r.peso_real or '-' }}t</td>
+                    <td style="color:{{ 'red' if r.dif_peso > 0 else 'green' }}; font-weight: bold;">
+                        {{ "%.3f"|format(r.dif_peso) }}t
+                    </td>
+                    <td>
+                        {% if r.status == 'Pendente Complemento' %}
+                            <span style="background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Pendente</span>
+                        {% elif r.status == 'Faturado' %}
+                            <span style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Faturado</span>
+                        {% else %}
+                            <span style="background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Aguardando</span>
+                        {% endif %}
+                    </td>
+                    <td><a href="{{ url_for('detalhe_romaneio', id=r.id) }}" class="btn btn-primary" style="padding:5px 10px; font-size:12px;">Abrir</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">Nenhum romaneio cadastrado ainda.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function filtrarTabela() {
+        let input = document.getElementById("filtro").value.toUpperCase();
+        let table = document.getElementById("tabelaRomaneios");
+        let tr = table.getElementsByTagName("tr");
+        for (let i = 1; i < tr.length; i++) {
+            let txtValue = tr[i].textContent || tr[i].innerText;
+            if (txtValue.toUpperCase().indexOf(input) > -1) {
+                tr[i].style.display = "";
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+    }
+</script>
+{% endblock %}
