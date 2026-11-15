@@ -1,0 +1,69 @@
+{% extends "base.html" %}{% block page_title %}Fechamento de Saldo{% endblock %}{% block content %}
+<h1>Fechamento de Saldo Pendente</h1>
+<p style="color: #666;">Aqui estão apenas os romaneios que ainda <strong>não foram faturados</strong>. Ao fechar o acerto, eles saem da lista.</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 20px;">
+    <div class="card" style="border-top: 4px solid #0ea5e9; margin-bottom: 0;">
+        <div class="card-body">
+            <div style="color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase;">Romaneios Pendentes</div>
+            <div style="font-size: 32px; font-weight: 700; color: #0ea5e9; margin: 5px 0;">{{ pendentes|length }}</div>
+        </div>
+    </div>
+    <div class="card" style="border-top: 4px solid #f59e0b; margin-bottom: 0;">
+        <div class="card-body">
+            <div style="color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase;">Toneladas Excedentes</div>
+            <div style="font-size: 32px; font-weight: 700; color: #f59e0b; margin: 5px 0;">{{ "%.3f"|format(total_ton) }}t</div>
+        </div>
+    </div>
+    <div class="card" style="border-top: 4px solid #16a34a; margin-bottom: 0;">
+        <div class="card-body">
+            <div style="color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase;">Valor Total a Receber</div>
+            <div style="font-size: 32px; font-weight: 700; color: #16a34a; margin: 5px 0;">R$ {{ "%.2f"|format(total_valor) }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header" style="background: #fff3cd; display: flex; justify-content: space-between; align-items: center;">
+        <div class="card-title" style="color: #664d03;">Fechar Acerto e Gerar Nota Complementar</div>
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('relatorio_saldo_pdf') }}" class="btn btn-danger" style="padding: 8px 15px; font-size: 13px;">📄 Gerar PDF</a>
+            <a href="{{ url_for('relatorio_espelho_excel') }}" class="btn btn-success" style="padding: 8px 15px; font-size: 13px;">📊 Gerar Excel</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('fechar_saldo') }}" style="display: flex; gap: 10px; align-items: flex-end;">
+            <div style="flex: 1;">
+                <label style="font-size: 13px; font-weight: 500; color: #64748b;">Chave da Nota Complementar (emitida no Conta Azul)</label>
+                <input type="text" name="chave_complementar" placeholder="Cole a chave da nota aqui" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; margin-top: 5px;">
+            </div>
+            <button type="submit" class="btn btn-danger" style="padding: 10px 20px;">Fechar Acerto e Baixar Tudo</button>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header"><div class="card-title">Romaneios Pendentes</div></div>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr><th>Romaneio</th><th>Motorista</th><th>Peso Fisco</th><th>Peso Real</th><th>Diferença</th><th>Valor a Receber</th></tr>
+            </thead>
+            <tbody>
+                {% for r in pendentes %}
+                <tr>
+                    <td><strong>#{{ r.numero_romaneio }}</strong></td>
+                    <td>{{ r.motorista.nome if r.motorista else '-' }}</td>
+                    <td>{{ r.peso_fisco }}t</td>
+                    <td>{{ r.peso_real or '-' }}t</td>
+                    <td style="color: red; font-weight: bold;">{{ "%.3f"|format(r.dif_peso) }}t</td>
+                    <td style="color: #16a34a; font-weight: bold;">R$ {{ "%.2f"|format(r.dif_valor) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">Nenhum romaneio pendente. Tudo já foi faturado!</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

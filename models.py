@@ -33,8 +33,7 @@ class ConjuntoVeicular(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome_conjunto = db.Column(db.String(50), unique=True)
     placa_tracionador = db.Column(db.String(10), nullable=False)
-    # CAMPO CORRIGIDO: Aumentado para 100 caracteres para caber várias placas
-    placa_carreta1 = db.Column(db.String(100)) 
+    placa_carreta1 = db.Column(db.String(100))
 
 class Romaneio(db.Model):
     __tablename__ = 'romaneios'
@@ -73,6 +72,7 @@ class ConfiguracaoEmpresa(db.Model):
     valor_tonelada_padrao = db.Column(db.Float, default=465.0)
     cfop_padrao = db.Column(db.String(10), default='5101')
     cst_padrao = db.Column(db.String(10), default='51')
+    logo_filename = db.Column(db.String(200), default='logo_padrao.png') # CAMPO DA LOGO
 
 class Abastecimento(db.Model):
     __tablename__ = 'abastecimentos'
@@ -103,10 +103,3 @@ class Multa(db.Model):
     pontos = db.Column(db.Integer)
     caminhao = db.relationship('Caminhao')
     motorista = db.relationship('Motorista')
-
-class LogAuditoria(db.Model):
-    __tablename__ = 'logs_auditoria'
-    id = db.Column(db.Integer, primary_key=True)
-    usuario = db.Column(db.String(50))
-    acao = db.Column(db.String(200))
-    data = db.Column(db.DateTime, default=datetime.utcnow)
