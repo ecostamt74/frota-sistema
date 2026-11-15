@@ -182,30 +182,29 @@ def fechar_saldo():
     flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados com a chave {chave}.', 'success')
     return redirect(url_for('saldo_pendente'))
 
-# --- ROTA DE LIMPEZA (BAIXA MANUAL DOS ROMANEIOS ANTIGOS) ---
-@app.route('/baixar-romaneios-antigos')
-def baixar_romaneios_antigos():
+# --- ROTA DE DESFAZER BAIXA ---
+@app.route('/desfazer-baixa')
+def desfazer_baixa():
     try:
-        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
-        count = 0
-        for r in pendentes:
-            r.status = 'Faturado'
-            r.chave_complementar = 'ACERTO_OUTUBRO_NOVEMBRO'
-            count += 1
+        romaneios = Romaneio.query.filter(Romaneio.numero_romaneio.in_([
+            '134801', '134458', '134486', '134502', '134562', '134593', 
+            '134595', '134626', '134680', '134717', '134718', '134736'
+        ])).all()
         
-        novo_fechamento = FechamentoAcerto(
-            chave_nota='MARCO_ZERO_POS_NF_169',
-            total_toneladas=0,
-            total_valor=0
-        )
-        db.session.add(novo_fechamento)
+        count = 0
+        for r in romaneios:
+            r.status = 'Pendente Complemento'
+            r.chave_complementar = None
+            count += 1
+            
+        FechamentoAcerto.query.filter_by(chave_nota='MARCO_ZERO_POS_NF_169').delete()
         db.session.commit()
-        return f"✅ {count} romaneios antigos foram baixados como 'Faturado'. O sistema está limpo para o novo ciclo. Acesse a tela de Saldo Pendente."
+        return f"✅ {count} romaneios voltaram para 'Pendente'. O saldo foi restaurado. Acesse a tela de Saldo Pendente."
     except Exception as e:
         db.session.rollback()
-        return f"❌ Erro ao baixar romaneios: {e}"
+        return f"❌ Erro: {e}"
 
-# --- IMPORTAR XML DA NF (Com Lógica de Baixa Parcial e Residual) ---
+# --- IMPORTAR XML DA NF (Lógica de Baixa Parcial) ---
 @app.route('/importar-xml-nfe', methods=['POST'])
 @login_required
 def importar_xml_nfe():
@@ -510,7 +509,15 @@ def importar_novembro():
 
         count = 0
         for r in dados.get("romaneios", []):
-            if not Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first():
+            # Força a atualização se já existir
+            romaneio_existente = Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first()
+            
+            if romaneio_existente:
+                romaneio_existente.status = 'Pendente Complemento'
+                romaneio_existente.chave_complementar = None
+                romaneio_existente.peso_real = r["peso_real"]
+                count += 1
+            else:
                 mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
                 conj = ConjuntoVeicular.query.filter_by(placa_tracionador=r["conjunto_placa"]).first() if r.get("conjunto_placa") else None
                 
@@ -531,7 +538,7 @@ def importar_novembro():
                 db.session.add(novo_r)
                 count += 1
         db.session.commit()
-        return f"✅ Sucesso! {count} romaneios de Novembro importados."
+        return f"✅ Sucesso! {count} romaneios de Novembro restaurados/importados."
     except Exception as e:
         db.session.rollback()
         return f"❌ Erro ao importar: {e}"
