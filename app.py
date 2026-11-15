@@ -1,18 +1,18 @@
 import os, io
 import json
+import xml.etree.ElementTree as ET
 from datetime import datetime, date
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
-from openpyxl.utils import get_column_letter
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
 from flask_migrate import Migrate
 
 from config import Config
-from models import db, Usuario, Motorista, Caminhao, ConjuntoVeicular, Romaneio, MovimentoEstoque, ConfiguracaoEmpresa, Abastecimento, Manutencao, Multa
+from models import db, Usuario, Motorista, Caminhao, ConjuntoVeicular, Romaneio, MovimentoEstoque, ConfiguracaoEmpresa, Abastecimento, Manutencao, Multa, FechamentoAcerto
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -62,10 +62,8 @@ def inject_globals():
     nome_empresa = 'MTI Frotas'
     try:
         config = ConfiguracaoEmpresa.query.first()
-        if config:
-            nome_empresa = config.nome_fantasia
-    except Exception:
-        pass 
+        if config: nome_empresa = config.nome_fantasia
+    except Exception: pass 
         
     grupos = {}
     menus = [
@@ -113,7 +111,6 @@ def listar_motoristas(): return render_template('motoristas.html', motoristas=Mo
 @login_required
 def listar_caminhoes(): return render_template('caminhoes.html', caminhoes=Caminhao.query.all())
 
-# --- CONJUNTOS ---
 @app.route('/conjuntos', methods=['GET', 'POST'])
 @login_required
 def listar_conjuntos():
@@ -138,9 +135,17 @@ def detalhe_romaneio(id): return render_template('romaneio_detalhe.html', romane
 @login_required
 def saldo_pendente():
     try:
-        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+        ultimo_fechamento = FechamentoAcerto.query.order_by(FechamentoAcerto.data_fechamento.desc()).first()
+        data_corte = ultimo_fechamento.data_fechamento if ultimo_fechamento else datetime(2000, 1, 1)
+
+        pendentes = Romaneio.query.filter(
+            Romaneio.status == 'Pendente Complemento',
+            Romaneio.data_criacao >= data_corte
+        ).order_by(Romaneio.id.asc()).all()
+        
         total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
-        total_valor = sum(r.dif_valor for r in pendentes)
+        total_valor = sum(r.dif_valor for r in pendentes if r.dif_valor > 0)
+        
         return render_template('saldo.html', pendentes=pendentes, total_ton=total_ton, total_valor=total_valor)
     except Exception as e:
         flash(f'Erro ao carregar saldo: {e}', 'danger')
@@ -150,33 +155,106 @@ def saldo_pendente():
 @login_required
 def fechar_saldo():
     chave = request.form.get('chave_complementar')
-    pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
+    
+    ultimo_fechamento = FechamentoAcerto.query.order_by(FechamentoAcerto.data_fechamento.desc()).first()
+    data_corte = ultimo_fechamento.data_fechamento if ultimo_fechamento else datetime(2000, 1, 1)
+
+    pendentes = Romaneio.query.filter(
+        Romaneio.status == 'Pendente Complemento',
+        Romaneio.data_criacao >= data_corte
+    ).all()
+
     if not pendentes:
-        flash('Não há romaneios pendentes.', 'warning')
+        flash('Não há romaneios pendentes para fechar.', 'warning')
         return redirect(url_for('saldo_pendente'))
+        
+    total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
+    total_valor = sum(r.dif_valor for r in pendentes if r.dif_valor > 0)
+
+    novo_fechamento = FechamentoAcerto(chave_nota=chave, total_toneladas=total_ton, total_valor=total_valor)
+    db.session.add(novo_fechamento)
+
     for r in pendentes:
-        r.status = 'Faturado'; r.chave_complementar = chave
+        r.status = 'Faturado'
+        r.chave_complementar = chave
+        
     db.session.commit()
-    flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados.', 'success')
+    flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados com a chave {chave}.', 'success')
+    return redirect(url_for('saldo_pendente'))
+
+# --- IMPORTAR XML DA NF ---
+@app.route('/importar-xml-nfe', methods=['POST'])
+@login_required
+def importar_xml_nfe():
+    arquivo = request.files.get('arquivo_xml')
+    if not arquivo or not arquivo.filename.endswith('.xml'):
+        flash('Envie um arquivo XML válido.', 'danger')
+        return redirect(url_for('saldo_pendente'))
+
+    try:
+        xml_content = arquivo.read()
+        root = ET.fromstring(xml_content)
+        ns = {'ns': 'http://www.portalfiscal.inf.br/nfe'}
+        
+        nNF = root.find('.//ns:ide/ns:nNF', ns).text
+        chave = root.find('.//ns:infProt/ns:chNFe', ns).text
+        qCom = float(root.find('.//ns:det/ns:prod/ns:qCom', ns).text)
+        vProd = float(root.find('.//ns:det/ns:prod/ns:vProd', ns).text)
+        
+        if abs(qCom - 45.0) > 0.01:
+            ultimo_fechamento = FechamentoAcerto.query.order_by(FechamentoAcerto.data_fechamento.desc()).first()
+            data_corte = ultimo_fechamento.data_fechamento if ultimo_fechamento else datetime(2000, 1, 1)
+
+            pendentes = Romaneio.query.filter(
+                Romaneio.status == 'Pendente Complemento',
+                Romaneio.data_criacao >= data_corte
+            ).order_by(Romaneio.id.asc()).all()
+
+            saldo_restante = qCom
+            for r in pendentes:
+                if saldo_restante <= 0: break
+                if r.dif_peso > 0:
+                    r.status = 'Faturado'
+                    r.chave_complementar = chave
+                    saldo_restante -= r.dif_peso
+            
+            novo_fechamento = FechamentoAcerto(chave_nota=chave, total_toneladas=qCom, total_valor=vProd)
+            db.session.add(novo_fechamento)
+            db.session.commit()
+            flash(f'✅ NF Complementar {nNF} importada! Saldo de {qCom}t baixado.', 'success')
+        else:
+            flash(f'ℹ️ NF de Venda {nNF} (45t) importada. Ela não dá baixa no saldo.', 'info')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao importar XML: {e}', 'danger')
+
     return redirect(url_for('saldo_pendente'))
 
 @app.route('/relatorio-saldo-pdf')
 @login_required
 def relatorio_saldo_pdf():
     try:
-        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+        ultimo_fechamento = FechamentoAcerto.query.order_by(FechamentoAcerto.data_fechamento.desc()).first()
+        data_corte = ultimo_fechamento.data_fechamento if ultimo_fechamento else datetime(2000, 1, 1)
+
+        pendentes = Romaneio.query.filter(
+            Romaneio.status == 'Pendente Complemento',
+            Romaneio.data_criacao >= data_corte
+        ).order_by(Romaneio.id.asc()).all()
+
         if not pendentes:
             flash('Não há romaneios pendentes.', 'warning')
             return redirect(url_for('saldo_pendente'))
-
+            
         config = ConfiguracaoEmpresa.query.first()
         logo_filename = config.logo_filename if config else 'logo_padrao.png'
+        
         total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
-        total_valor = sum(r.dif_valor for r in pendentes)
+        total_valor = sum(r.dif_valor for r in pendentes if r.dif_valor > 0)
         
         from services.gerador_pdf import gerar_pdf_saldo
         pdf_buffer = gerar_pdf_saldo(pendentes, total_ton, total_valor, logo_filename)
-        
         return send_file(pdf_buffer, as_attachment=True, download_name="Relatorio_Saldo_Pendente.pdf", mimetype="application/pdf")
     except Exception as e:
         flash(f'Erro ao gerar PDF: {e}', 'danger')
@@ -186,7 +264,14 @@ def relatorio_saldo_pdf():
 @login_required
 def relatorio_simples_excel():
     try:
-        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
+        ultimo_fechamento = FechamentoAcerto.query.order_by(FechamentoAcerto.data_fechamento.desc()).first()
+        data_corte = ultimo_fechamento.data_fechamento if ultimo_fechamento else datetime(2000, 1, 1)
+
+        pendentes = Romaneio.query.filter(
+            Romaneio.status == 'Pendente Complemento',
+            Romaneio.data_criacao >= data_corte
+        ).all()
+        
         wb = Workbook(); ws = wb.active
         ws.append(["Romaneio", "Motorista", "Peso Fisco", "Peso Real", "Diferença", "Valor a Receber"])
         for r in pendentes:
@@ -201,7 +286,14 @@ def relatorio_simples_excel():
 @login_required
 def relatorio_espelho_excel():
     try:
-        roms = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+        ultimo_fechamento = FechamentoAcerto.query.order_by(FechamentoAcerto.data_fechamento.desc()).first()
+        data_corte = ultimo_fechamento.data_fechamento if ultimo_fechamento else datetime(2000, 1, 1)
+
+        roms = Romaneio.query.filter(
+            Romaneio.status == 'Pendente Complemento',
+            Romaneio.data_criacao >= data_corte
+        ).order_by(Romaneio.id.asc()).all()
+        
         if not roms:
             flash('Não há romaneios pendentes.', 'warning')
             return redirect(url_for('saldo_pendente'))
@@ -216,9 +308,11 @@ def relatorio_espelho_excel():
 
         for i, r in enumerate(roms, 1):
             placa = r.conjunto.placa_tracionador if r.conjunto else "N/A"
-            data = r.data_criacao.strftime('%d/%m/%Y') if r.data_criacao else ''
+            data_pesagem = r.data_criacao.strftime('%d/%m/%Y') if r.data_criacao else ''
+            data_entrega = r.data_entrega.strftime('%d/%m/%Y') if r.data_entrega else data_pesagem 
+            
             ws.append([
-                i, data, data, placa, r.numero_romaneio, 
+                i, data_pesagem, data_entrega, placa, r.numero_nota_original or r.numero_romaneio, 
                 r.peso_fisco, r.valor_tonelada, (r.peso_fisco * r.valor_tonelada), 
                 r.peso_real or 0, r.valor_tonelada, ((r.peso_real or 0) * r.valor_tonelada), 
                 round(r.dif_peso, 3), round(r.dif_valor, 2), r.motorista.nome if r.motorista else ''
@@ -244,13 +338,11 @@ def configuracoes():
             config.nome_fantasia = request.form.get('nome_fantasia', 'FBE')
             config.peso_padrao_ton = float(request.form.get('peso_padrao_ton', 45.0))
             config.valor_tonelada_padrao = float(request.form.get('valor_tonelada_padrao', 465.0))
-            
             logo_file = request.files.get('logo_file')
             if logo_file and logo_file.filename != '':
                 filename = secure_filename(logo_file.filename)
                 logo_file.save(os.path.join('static', 'img', filename))
                 config.logo_filename = filename
-                
             db.session.commit(); flash('Parâmetros salvos!', 'success')
             return redirect(url_for('configuracoes'))
         return render_template('configuracoes.html', config=config)
@@ -275,7 +367,7 @@ def listar_manutencoes(): return render_template('manutencoes.html', manutencoes
 @login_required
 def listar_multas(): return render_template('multas.html', multas=[], caminhoes=[], motoristas=[])
 
-# --- ROTAS SECRETAS DE TESTE ---
+# --- ROTAS SECRETAS DE RESET E IMPORTAÇÃO ---
 @app.route('/resetar-banco-nuvem')
 def resetar_banco_nuvem():
     try:
@@ -290,6 +382,17 @@ def resetar_banco_nuvem():
     except Exception as e:
         db.session.rollback()
         return f"❌ Erro: {e}"
+
+@app.route('/atualizar-banco-seguro')
+def atualizar_banco_seguro():
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(text("ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS numero_nota_original VARCHAR(20);"))
+            conn.commit()
+            db.create_all()
+        return "✅ Banco atualizado com sucesso! As colunas novas foram adicionadas."
+    except Exception as e:
+        return f"❌ Erro ao atualizar: {e}"
 
 @app.route('/rota-secreta-importacao')
 def rota_secreta_importacao():
@@ -307,9 +410,17 @@ def rota_secreta_importacao():
         for r in dados.get("romaneios", []):
             if not Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first():
                 mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
+                data_ent = r.get("data_entrega")
+                if data_ent:
+                    data_ent = datetime.strptime(data_ent, '%Y-%m-%d').date()
+                
                 db.session.add(Romaneio(
-                    numero_romaneio=r["numero_romaneio"], peso_fisco=r["peso_fisco"], peso_real=r["peso_real"],
-                    valor_tonelada=r["valor_tonelada"], status=r["status"],
+                    numero_romaneio=r["numero_romaneio"], 
+                    peso_fisco=r["peso_fisco"], 
+                    peso_real=r["peso_real"],
+                    valor_tonelada=r["valor_tonelada"], 
+                    status=r["status"],
+                    data_entrega=data_ent,
                     motorista_id=mot.id if mot else None
                 ))
         db.session.commit()

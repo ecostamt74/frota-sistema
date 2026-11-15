@@ -38,9 +38,10 @@ class ConjuntoVeicular(db.Model):
 class Romaneio(db.Model):
     __tablename__ = 'romaneios'
     id = db.Column(db.Integer, primary_key=True)
-    numero_romaneio = db.Column(db.String(20), unique=True)
+    numero_romaneio = db.Column(db.String(20), unique=True) # Ex: 134375 (SAP)
+    numero_nota_original = db.Column(db.String(20)) # Ex: 148 (NF Venda)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    data_entrega = db.Column(db.Date) # <--- CAMPO NOVO AQUI
+    data_entrega = db.Column(db.Date)
     motorista_id = db.Column(db.Integer, db.ForeignKey('motoristas.id'))
     conjunto_id = db.Column(db.Integer, db.ForeignKey('conjuntos_veiculares.id'))
     chave_transf = db.Column(db.String(60))
@@ -50,12 +51,28 @@ class Romaneio(db.Model):
     peso_real = db.Column(db.Float)
     valor_tonelada = db.Column(db.Float, default=465.0)
     status = db.Column(db.String(30), default='Aguardando Balança')
+    
     motorista = db.relationship('Motorista')
     conjunto = db.relationship('ConjuntoVeicular')
+    
     @property
-    def dif_peso(self): return (self.peso_real - self.peso_fisco) if self.peso_real and self.peso_fisco else 0.0
+    def dif_peso(self): 
+        if self.peso_real and self.peso_fisco:
+            return round(self.peso_real - self.peso_fisco, 3)
+        return 0.0
+    
     @property
-    def dif_valor(self): return (self.dif_peso * self.valor_tonelada) if self.dif_peso > 0 else 0.0
+    def dif_valor(self): 
+        return round(self.dif_peso * self.valor_tonelada, 2)
+
+class FechamentoAcerto(db.Model):
+    __tablename__ = 'fechamentos_acerto'
+    id = db.Column(db.Integer, primary_key=True)
+    data_fechamento = db.Column(db.DateTime, default=datetime.utcnow)
+    chave_nota = db.Column(db.String(60))
+    total_toneladas = db.Column(db.Float)
+    total_valor = db.Column(db.Float)
+    tipo = db.Column(db.String(20), default='Complementar') # Complementar ou Devolucao
 
 class MovimentoEstoque(db.Model):
     __tablename__ = 'movimentos_estoque'
