@@ -13,6 +13,7 @@ from flask_migrate import Migrate
 
 from config import Config
 from models import db, Usuario, Motorista, Caminhao, ConjuntoVeicular, Romaneio, MovimentoEstoque, ConfiguracaoEmpresa, Abastecimento, Manutencao, Multa
+from services.gerador_pdf import gerar_pdf_saldo
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -38,8 +39,9 @@ def load_user(uid): return Usuario.query.get(int(uid))
 
 os.makedirs('instance', exist_ok=True)
 os.makedirs('uploads', exist_ok=True)
+os.makedirs(os.path.join('static', 'img'), exist_ok=True)
 
-# --- INICIALIZAÇÃO SEGURA (NÃO TRAVA SE O BANCO ESTIVER ANTIGO) ---
+# --- INICIALIZAÇÃO SEGURA ---
 with app.app_context():
     db.create_all()
     try:
@@ -56,7 +58,7 @@ with app.app_context():
             db.session.add(ConfiguracaoEmpresa())
             db.session.commit()
     except Exception as e:
-        print(f"Aviso ao criar configuração (provavelmente banco antigo): {e}")
+        print(f"Aviso ao criar configuração: {e}")
 
 @app.context_processor
 def inject_globals():
@@ -70,6 +72,7 @@ def inject_globals():
     menus = [
         {"titulo": "📊 Painel", "endpoint": "index", "grupo": "Operação"},
         {"titulo": "📦 Romaneios", "endpoint": "listar_romaneios", "grupo": "Operação"},
+        {"titulo": "💰 Saldo Pendente", "endpoint": "saldo_pendente", "grupo": "Operação"},
         {"titulo": "📦 Estoque", "endpoint": "painel_estoque", "grupo": "Operação"},
         {"titulo": "👤 Motoristas", "endpoint": "listar_motoristas", "grupo": "Cadastros"},
         {"titulo": "🚛 Caminhões", "endpoint": "listar_caminhoes", "grupo": "Cadastros"},
@@ -175,16 +178,52 @@ def lancar_peso_manual(id):
     except Exception as e: flash(f'Erro: {e}', 'danger')
     return redirect(url_for('detalhe_romaneio', id=id))
 
-@app.route('/fechar-acerto', methods=['POST'])
+# --- TELA DE SALDO PENDENTE ---
+@app.route('/saldo-pendente')
 @login_required
-def fechar_acerto():
-    pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
-    chave = request.form.get('chave_complementar')
-    for r in pendentes:
-        r.status = 'Faturado'; r.chave_complementar = chave
-    db.session.commit(); flash('Acerto Global realizado!', 'success')
-    return redirect(url_for('listar_romaneios'))
+def saldo_pendente():
+    pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+    total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
+    total_valor = sum(r.dif_valor for r in pendentes)
+    return render_template('saldo.html', pendentes=pendentes, total_ton=total_ton, total_valor=total_valor)
 
+@app.route('/fechar-saldo', methods=['POST'])
+@login_required
+def fechar_saldo():
+    chave = request.form.get('chave_complementar')
+    pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
+    
+    if not pendentes:
+        flash('Não há romaneios pendentes para fechar.', 'warning')
+        return redirect(url_for('saldo_pendente'))
+        
+    for r in pendentes:
+        r.status = 'Faturado'
+        r.chave_complementar = chave
+        
+    db.session.commit()
+    flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados com a chave {chave}.', 'success')
+    return redirect(url_for('saldo_pendente'))
+
+@app.route('/relatorio-saldo-pdf')
+@login_required
+def relatorio_saldo_pdf():
+    pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+    if not pendentes:
+        flash('Não há romaneios pendentes.', 'warning')
+        return redirect(url_for('saldo_pendente'))
+
+    config = ConfiguracaoEmpresa.query.first()
+    logo_filename = config.logo_filename if config else 'logo_padrao.png'
+
+    total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
+    total_valor = sum(r.dif_valor for r in pendentes)
+    
+    pdf_buffer = gerar_pdf_saldo(pendentes, total_ton, total_valor, logo_filename)
+    
+    return send_file(pdf_buffer, as_attachment=True, download_name="Relatorio_Saldo_Pendente.pdf", mimetype="application/pdf")
+
+# --- RELATÓRIOS EXCEL (Apenas Pendentes) ---
 @app.route('/relatorio-simples-excel')
 @login_required
 def relatorio_simples_excel():
@@ -192,25 +231,79 @@ def relatorio_simples_excel():
     wb = Workbook(); ws = wb.active
     ws.append(["Romaneio", "Motorista", "Peso Fisco", "Peso Real", "Diferença", "Valor a Receber"])
     for r in pendentes:
-        ws.append([r.numero_romaneio, r.motorista.nome if r.motorista else '', r.peso_fisco, r.peso_real or 0, r.dif_peso, r.dif_valor])
+        ws.append([r.numero_romaneio, r.motorista.nome if r.motorista else '', r.peso_fisco, r.peso_real or 0, round(r.dif_peso, 3), round(r.dif_valor, 2)])
     arq = io.BytesIO(); wb.save(arq); arq.seek(0)
-    return send_file(arq, as_attachment=True, download_name="Relatorio_Simples.xlsx")
+    return send_file(arq, as_attachment=True, download_name="Relatorio_Simples_Pendentes.xlsx")
 
 @app.route('/relatorio-espelho-excel')
 @login_required
 def relatorio_espelho_excel():
-    roms = Romaneio.query.order_by(Romaneio.id.asc()).all()
+    roms = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+    
+    if not roms:
+        flash('Não há romaneios pendentes para gerar o relatório.', 'warning')
+        return redirect(url_for('saldo_pendente'))
+        
     wb = Workbook(); ws = wb.active
-    ws.merge_cells('A1:L1'); ws['A1'] = "FBE FAST BIOMASS X QUEIROZ"; ws['A1'].font = Font(bold=True, size=14); ws['A1'].alignment = Alignment(horizontal='center')
-    ws.merge_cells('A2:G2'); ws['A2'] = "NF FISCO"; ws['A2'].font = Font(bold=True)
-    ws.merge_cells('H2:L2'); ws['H2'] = "DESCARGAS"; ws['H2'].font = Font(bold=True)
-    headers = ["QTD", "DATA", "PLACA", "NOTA", "TON (Fisco)", "VALOR/TON", "TOTAL NF", "TON (Real)", "PESO NA NOTA", "DIF FISCO", "DIF VALOR", "MOTORISTA"]
+    ws.title = "Faturamento"
+    
+    ws.merge_cells('A1:N1'); ws['A1'] = "FBE FAST BIOMASS X QUEIROZ - 5.122"; ws['A1'].font = Font(bold=True, size=14); ws['A1'].alignment = Alignment(horizontal='center')
+    ws.merge_cells('A2:G2'); ws['A2'] = "NF FISCO"; ws['A2'].font = Font(bold=True, color="FFFFFF"); ws['A2'].fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid"); ws['A2'].alignment = Alignment(horizontal='center')
+    ws.merge_cells('H2:N2'); ws['H2'] = "DESCARGAS"; ws['H2'].font = Font(bold=True, color="FFFFFF"); ws['H2'].fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid"); ws['H2'].alignment = Alignment(horizontal='center')
+    
+    headers = ["QTD", "DATA", "DATA DE ENTREGA", "PLACA CAVALO", "NOTA FISCAL", "TONELADA (Fisco)", "VALOR / TON", "VALOR NF", "TON. ENTREGUE", "VALOR / TON", "TOTAL", "DIF FISCO", "DIF VALOR", "MOTORISTA"]
     ws.append(headers)
-    for i, r in enumerate(roms, 1):
-        ws.append([i, r.data_criacao.strftime('%d/%m/%Y'), r.conjunto.placa_tracionador if r.conjunto else '', r.numero_romaneio, r.peso_fisco, r.valor_tonelada, r.peso_fisco*r.valor_tonelada, r.peso_real or 0, r.peso_fisco, r.dif_peso, r.dif_valor, r.motorista.nome if r.motorista else ''])
-    arq = io.BytesIO(); wb.save(arq); arq.seek(0)
-    return send_file(arq, as_attachment=True, download_name="Relatorio_Espelho.xlsx")
+    
+    for cell in ws[3]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
+        cell.alignment = Alignment(horizontal='center')
 
+    total_fisco_ton = 0; total_fisco_val = 0
+    total_real_ton = 0; total_dif_ton = 0; total_dif_val = 0
+
+    for i, r in enumerate(roms, 1):
+        ton_fisco = r.peso_fisco or 45.0
+        val_ton = r.valor_tonelada or 465.0
+        total_nf = ton_fisco * val_ton
+        ton_real = r.peso_real or 0
+        dif_ton = round(r.dif_peso, 3)
+        dif_valor = round(r.dif_valor, 2)
+        
+        total_fisco_ton += ton_fisco; total_fisco_val += total_nf
+        total_real_ton += ton_real; total_dif_ton += dif_ton; total_dif_val += dif_valor
+
+        placa = r.conjunto.placa_tracionador if r.conjunto else "N/A"
+        data_criacao = r.data_criacao.strftime('%d/%m/%Y') if r.data_criacao else ''
+        data_entrega = r.data_criacao.strftime('%d/%m/%Y') if r.data_criacao else ''
+
+        ws.append([
+            i, data_criacao, data_entrega, placa, r.numero_romaneio, 
+            ton_fisco, val_ton, total_nf, 
+            ton_real, val_ton, (ton_real * val_ton), 
+            dif_ton, dif_valor, r.motorista.nome if r.motorista else ''
+        ])
+
+    ws.append(["", "", "", "", "TOTAIS", total_fisco_ton, "", total_fisco_val, total_real_ton, "", total_real_ton*465, total_dif_ton, total_dif_val, ""])
+    
+    for row in ws.iter_rows(min_row=4, max_row=ws.max_row, min_col=6, max_col=13):
+        for cell in row:
+            if cell.column in [6, 9, 12]:
+                cell.number_format = '#,##0.000'
+            elif cell.column in [7, 8, 10, 11, 13]:
+                cell.number_format = 'R$ #,##0.00'
+    
+    ws.column_dimensions['A'].width = 5
+    ws.column_dimensions['B'].width = 12
+    ws.column_dimensions['C'].width = 14
+    ws.column_dimensions['D'].width = 12
+    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['N'].width = 25
+
+    arq = io.BytesIO(); wb.save(arq); arq.seek(0)
+    return send_file(arq, as_attachment=True, download_name="Relatorio_Espelho_Pendentes.xlsx")
+
+# --- IMPORTAÇÃO E ESTOQUE ---
 @app.route('/importar-planilha', methods=['POST'])
 @login_required
 def importar_planilha():
@@ -228,7 +321,6 @@ def importar_planilha():
         except Exception as e: flash(f'Erro: {e}', 'danger')
     return redirect(url_for('listar_romaneios'))
 
-# --- ESTOQUE ---
 @app.route('/estoque')
 @login_required
 def painel_estoque():
@@ -262,7 +354,7 @@ def listar_multas():
         db.session.add(m); db.session.commit(); return redirect(url_for('listar_multas'))
     return render_template('multas.html', multas=Multa.query.all(), caminhoes=Caminhao.query.all(), motoristas=Motorista.query.all())
 
-# --- PARÂMETROS ---
+# --- PARÂMETROS E LOGO ---
 @app.route('/configuracoes', methods=['GET', 'POST'])
 @login_required
 def configuracoes():
@@ -271,44 +363,45 @@ def configuracoes():
         config.nome_fantasia = request.form.get('nome_fantasia')
         config.peso_padrao_ton = float(request.form.get('peso_padrao_ton'))
         config.valor_tonelada_padrao = float(request.form.get('valor_tonelada_padrao'))
-        db.session.commit(); flash('Parâmetros salvos!', 'success')
+        
+        logo_file = request.files.get('logo_file')
+        if logo_file and logo_file.filename != '':
+            filename = secure_filename(logo_file.filename)
+            os.makedirs(os.path.join('static', 'img'), exist_ok=True)
+            logo_file.save(os.path.join('static', 'img', filename))
+            config.logo_filename = filename
+            
+        db.session.commit(); flash('Parâmetros e logo salvos!', 'success')
         return redirect(url_for('configuracoes'))
     return render_template('configuracoes.html', config=config)
 
-# --- ROTA SECRETA PARA IMPORTAR OS DADOS DO JSON ---
+# --- ROTAS SECRETAS ---
 @app.route('/rota-secreta-importacao')
 def rota_secreta_importacao():
     try:
         if not os.path.exists('dados_backup.json'):
             return "❌ Arquivo 'dados_backup.json' não encontrado no servidor."
-            
         with open('dados_backup.json', 'r', encoding='utf-8') as f:
             dados = json.load(f)
-
         if dados.get("config") and not ConfiguracaoEmpresa.query.first():
             db.session.add(ConfiguracaoEmpresa(**dados["config"]))
-
         for m in dados.get("motoristas", []):
             if not Motorista.query.filter_by(cpf=m["cpf"]).first():
                 db.session.add(Motorista(**m))
         db.session.commit()
-
         for c in dados.get("caminhoes", []):
             if not Caminhao.query.filter_by(placa=c["placa"]).first():
                 db.session.add(Caminhao(**c))
         db.session.commit()
-
         for c in dados.get("conjuntos", []):
             if not ConjuntoVeicular.query.filter_by(nome_conjunto=c["nome_conjunto"]).first():
                 db.session.add(ConjuntoVeicular(**c))
         db.session.commit()
-
         count_romaneios = 0
         for r in dados.get("romaneios", []):
             if not Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first():
                 mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
                 conj = ConjuntoVeicular.query.filter_by(placa_tracionador=r["conjunto_placa"]).first() if r.get("conjunto_placa") else None
-                
                 novo_r = Romaneio(
                     numero_romaneio=r["numero_romaneio"], peso_fisco=r["peso_fisco"], peso_real=r["peso_real"],
                     valor_tonelada=r["valor_tonelada"], status=r["status"], chave_venda=r.get("chave_venda"),
@@ -321,19 +414,15 @@ def rota_secreta_importacao():
     except Exception as e:
         return f"❌ Erro ao importar: {e}"
 
-# --- ROTA PARA RESETAR O BANCO NA NUVEM ---
 @app.route('/resetar-banco-nuvem')
 def resetar_banco_nuvem():
     try:
         db.drop_all()
         db.create_all()
-        
         u = Usuario(username='admin', nome='Admin')
         u.set_senha('admin123')
         db.session.add(u)
-        
         db.session.add(ConfiguracaoEmpresa())
-        
         db.session.commit()
         return "✅ Banco de dados resetado e recriado com sucesso! O usuário admin foi criado."
     except Exception as e:
