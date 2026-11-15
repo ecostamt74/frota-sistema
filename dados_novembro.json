@@ -24,6 +24,8 @@
     {"numero_romaneio": "134680", "numero_nota_original": "138", "data_entrega": "2026-11-06", "peso_fisco": 45.0, "peso_real": 54.22, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "33333333333", "conjunto_placa": "STK1E07"},
     {"numero_romaneio": "134717", "numero_nota_original": "152", "data_entrega": "2026-11-06", "peso_fisco": 45.0, "peso_real": 54.88, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "00859697100", "conjunto_placa": "QCM9E80"},
     {"numero_romaneio": "134718", "numero_nota_original": "119", "data_entrega": "2026-11-07", "peso_fisco": 45.0, "peso_real": 52.46, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "11111111111", "conjunto_placa": "QCN9E80"},
-    {"numero_romaneio": "134736", "numero_nota_original": "160", "data_entrega": "2026-11-07", "peso_fisco": 45.0, "peso_real": 50.52, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "12243728168", "conjunto_placa": "SUH6G73"}
+    {"numero_romaneio": "134736", "numero_nota_original": "160", "data_entrega": "2026-11-07", "peso_fisco": 45.0, "peso_real": 50.52, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "12243728168", "conjunto_placa": "SUH6G73"},
+    {"numero_romaneio": "134760", "numero_nota_original": "159", "data_entrega": "2026-11-07", "peso_fisco": 45.0, "peso_real": 53.52, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "33333333333", "conjunto_placa": "STK1E07"},
+    {"numero_romaneio": "134762", "numero_nota_original": "163", "data_entrega": "2026-11-09", "peso_fisco": 45.0, "peso_real": 53.62, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "33333333333", "conjunto_placa": "STK1E07"}
   ]
 }
