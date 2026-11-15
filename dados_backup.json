@@ -1,0 +1,540 @@
+{
+    "motoristas": [
+        {
+            "nome": "ENIVALDO SILVA DE OLIVEIRA",
+            "cpf": "78115213187",
+            "cnh": "123456789"
+        },
+        {
+            "nome": "ANDERSON",
+            "cpf": "36818828185",
+            "cnh": null
+        },
+        {
+            "nome": "JOELDER REIS SERAFIN",
+            "cpf": "86685446561",
+            "cnh": null
+        },
+        {
+            "nome": "JOSE SIMAR",
+            "cpf": "82441470298",
+            "cnh": ""
+        },
+        {
+            "nome": "ISMAEL",
+            "cpf": "25123592040",
+            "cnh": null
+        },
+        {
+            "nome": "LUIZ HENRIQUE MANTOVANI",
+            "cpf": "96353068397",
+            "cnh": null
+        },
+        {
+            "nome": "651",
+            "cpf": "61551208441",
+            "cnh": null
+        },
+        {
+            "nome": "3031.800000000003",
+            "cpf": "86499461959",
+            "cnh": null
+        }
+    ],
+    "caminhoes": [
+        {
+            "placa": "STK1E07",
+            "marca": "Volvo",
+            "modelo": "FH 460 (Cavalo)"
+        },
+        {
+            "placa": "QCC6D66",
+            "marca": "Randon",
+            "modelo": "Carreta 1"
+        },
+        {
+            "placa": "QCC6D76",
+            "marca": "Randon",
+            "modelo": "Dolly"
+        },
+        {
+            "placa": "QCD0548",
+            "marca": "Randon",
+            "modelo": "Carreta 2"
+        }
+    ],
+    "conjuntos": [
+        {
+            "nome_conjunto": "Bitrem Enivaldo",
+            "placa_tracionador": "STK1E07",
+            "placa_carreta1": "QCC6D66, QCC6D76, QCD0548"
+        }
+    ],
+    "romaneios": [
+        {
+            "numero_romaneio": "89",
+            "peso_fisco": 45.0,
+            "peso_real": 49.4,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "36818828185",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "90",
+            "peso_fisco": 45.0,
+            "peso_real": 48.04,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "86685446561",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "91",
+            "peso_fisco": 45.0,
+            "peso_real": 53.98,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "78115213187",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "94",
+            "peso_fisco": 45.0,
+            "peso_real": 51.48,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "95",
+            "peso_fisco": 45.0,
+            "peso_real": 53.62,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "25123592040",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "96",
+            "peso_fisco": 45.0,
+            "peso_real": 60.42,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "97",
+            "peso_fisco": 45.0,
+            "peso_real": 55.54,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "78115213187",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "98",
+            "peso_fisco": 45.0,
+            "peso_real": 61.58,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "36818828185",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "100",
+            "peso_fisco": 45.0,
+            "peso_real": 57.46,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "25123592040",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "102",
+            "peso_fisco": 45.0,
+            "peso_real": 53.88,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "103",
+            "peso_fisco": 45.0,
+            "peso_real": 50.92,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "36818828185",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "104",
+            "peso_fisco": 45.0,
+            "peso_real": 50.16,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "105",
+            "peso_fisco": 45.0,
+            "peso_real": 58.5,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "96353068397",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "106",
+            "peso_fisco": 45.0,
+            "peso_real": 53.46,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "108",
+            "peso_fisco": 45.0,
+            "peso_real": 56.16,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "36818828185",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "109",
+            "peso_fisco": 45.0,
+            "peso_real": 57.8,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "96353068397",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "110",
+            "peso_fisco": 45.0,
+            "peso_real": 53.74,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "86685446561",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "111",
+            "peso_fisco": 45.0,
+            "peso_real": 54.9,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "112",
+            "peso_fisco": 45.0,
+            "peso_real": 56.08,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "96353068397",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "114",
+            "peso_fisco": 45.0,
+            "peso_real": 57.26,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "86685446561",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "115",
+            "peso_fisco": 45.0,
+            "peso_real": 55.66,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "116",
+            "peso_fisco": 45.0,
+            "peso_real": 54.24,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "78115213187",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "118",
+            "peso_fisco": 45.0,
+            "peso_real": 60.24,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "36818828185",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "120",
+            "peso_fisco": 45.0,
+            "peso_real": 54.84,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "121",
+            "peso_fisco": 45.0,
+            "peso_real": 55.92,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "78115213187",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "122",
+            "peso_fisco": 45.0,
+            "peso_real": 48.52,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "96353068397",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "123",
+            "peso_fisco": 45.0,
+            "peso_real": 53.38,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "36818828185",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "124",
+            "peso_fisco": 45.0,
+            "peso_real": 51.82,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "125",
+            "peso_fisco": 45.0,
+            "peso_real": 53.04,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "78115213187",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "128",
+            "peso_fisco": 45.0,
+            "peso_real": 55.18,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "96353068397",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "129",
+            "peso_fisco": 45.0,
+            "peso_real": 51.56,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "78115213187",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "130",
+            "peso_fisco": 45.0,
+            "peso_real": 52.6,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "132",
+            "peso_fisco": 45.0,
+            "peso_real": 56.02,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "36818828185",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "133",
+            "peso_fisco": 45.0,
+            "peso_real": 53.2,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "78115213187",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "134",
+            "peso_fisco": 45.0,
+            "peso_real": 54.8,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "135",
+            "peso_fisco": 45.0,
+            "peso_real": 48.0,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "36818828185",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "136",
+            "peso_fisco": 45.0,
+            "peso_real": 49.74,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "139",
+            "peso_fisco": 45.0,
+            "peso_real": 50.16,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "141",
+            "peso_fisco": 45.0,
+            "peso_real": 52.58,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "96353068397",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "143",
+            "peso_fisco": 45.0,
+            "peso_real": 53.76,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "144",
+            "peso_fisco": 45.0,
+            "peso_real": 51.74,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "96353068397",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "145",
+            "peso_fisco": 45.0,
+            "peso_real": 55.84,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "78115213187",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "146",
+            "peso_fisco": 45.0,
+            "peso_real": 52.84,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "147",
+            "peso_fisco": 45.0,
+            "peso_real": 57.0,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "82441470298",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "148",
+            "peso_fisco": 45.0,
+            "peso_real": 52.84,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "78115213187",
+            "conjunto_placa": null
+        },
+        {
+            "numero_romaneio": "137",
+            "peso_fisco": 45.0,
+            "peso_real": 51.52,
+            "valor_tonelada": 465.0,
+            "status": "Faturado",
+            "chave_venda": null,
+            "motorista_cpf": "96353068397",
+            "conjunto_placa": null
+        }
+    ],
+    "config": {
+        "nome_fantasia": "FBE Logística",
+        "peso_padrao_ton": 45.0,
+        "valor_tonelada_padrao": 465.0
+    }
+}

@@ -1,5 +1,4 @@
 import os, io
-import json
 from datetime import datetime, date
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -9,7 +8,7 @@ from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from openpyxl.utils import get_column_letter
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
-from flask_migrate import Migrate
+from flask_migrate import Migrate # <--- NOVA BIBLIOTECA AQUI
 
 from config import Config
 from models import db, Usuario, Motorista, Caminhao, ConjuntoVeicular, Romaneio, MovimentoEstoque, ConfiguracaoEmpresa, Abastecimento, Manutencao, Multa
@@ -17,18 +16,20 @@ from models import db, Usuario, Motorista, Caminhao, ConjuntoVeicular, Romaneio,
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# --- ATIVAÇÃO DO MODO WAL (CONCORRÊNCIA) APENAS PARA SQLITE ---
+# --- ATIVAÇÃO DO MODO WAL (CONCORRÊNCIA) ---
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    if 'sqlite' in str(dbapi_connection.__class__):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA journal_mode=WAL;")
-        cursor.execute("PRAGMA busy_timeout=5000;")
-        cursor.execute("PRAGMA synchronous=NORMAL;")
-        cursor.close()
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL;")
+    cursor.execute("PRAGMA busy_timeout=5000;")
+    cursor.execute("PRAGMA synchronous=NORMAL;")
+    cursor.close()
 
 db.init_app(app)
-migrate = Migrate(app, db, render_as_batch=True)
+
+# --- CONFIGURAÇÃO DO MIGRATE PARA ATUALIZAÇÕES SEGURAS ---
+# O render_as_batch=True é essencial para o SQLite não perder dados ao alterar tabelas
+migrate = Migrate(app, db, render_as_batch=True) 
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -98,10 +99,16 @@ def listar_motoristas(): return render_template('motoristas.html', motoristas=Mo
 def novo_motorista():
     if request.method == 'POST':
         try:
-            db.session.add(Motorista(nome=request.form['nome'].upper(), cpf=request.form['cpf'], cnh=request.form.get('cnh')))
-            db.session.commit(); flash('Motorista cadastrado!', 'success')
+            db.session.add(Motorista(
+                nome=request.form['nome'].upper(),
+                cpf=request.form['cpf'],
+                cnh=request.form.get('cnh')
+            ))
+            db.session.commit()
+            flash('Motorista cadastrado!', 'success')
             return redirect(url_for('listar_motoristas'))
-        except Exception as e: db.session.rollback(); flash(f'Erro: {e}', 'danger')
+        except Exception as e:
+            db.session.rollback(); flash(f'Erro: {e}', 'danger')
     return render_template('form_motorista.html')
 
 @app.route('/motoristas/<int:id>/editar', methods=['GET', 'POST'])
@@ -109,8 +116,11 @@ def novo_motorista():
 def editar_motorista(id):
     m = Motorista.query.get_or_404(id)
     if request.method == 'POST':
-        m.nome = request.form['nome'].upper(); m.cpf = request.form['cpf']; m.cnh = request.form.get('cnh')
-        db.session.commit(); flash('Motorista atualizado!', 'success')
+        m.nome = request.form['nome'].upper()
+        m.cpf = request.form['cpf']
+        m.cnh = request.form.get('cnh')
+        db.session.commit()
+        flash('Motorista atualizado com sucesso!', 'success')
         return redirect(url_for('listar_motoristas'))
     return render_template('editar_motorista.html', motorista=m)
 
@@ -125,7 +135,11 @@ def listar_caminhoes(): return render_template('caminhoes.html', caminhoes=Camin
 def listar_conjuntos():
     if request.method == 'POST':
         reb = ','.join([p.upper() for p in request.form.getlist('reboques[]') if p.strip()])
-        db.session.add(ConjuntoVeicular(nome_conjunto=request.form['nome_conjunto'], placa_tracionador=request.form['placa_tracionador'].upper(), placa_carreta1=reb))
+        db.session.add(ConjuntoVeicular(
+            nome_conjunto=request.form['nome_conjunto'],
+            placa_tracionador=request.form['placa_tracionador'].upper(),
+            placa_carreta1=reb
+        ))
         db.session.commit(); flash('Conjunto cadastrado!', 'success')
         return redirect(url_for('listar_conjuntos'))
     return render_template('conjuntos.html', conjuntos=ConjuntoVeicular.query.all())
@@ -136,7 +150,9 @@ def editar_conjunto(id):
     c = ConjuntoVeicular.query.get_or_404(id)
     if request.method == 'POST':
         reb = request.form.getlist('reboques[]')
-        c.nome_conjunto = request.form['nome_conjunto']; c.placa_tracionador = request.form['placa_tracionador'].upper(); c.placa_carreta1 = ','.join([p.upper() for p in reb if p.strip()])
+        c.nome_conjunto = request.form['nome_conjunto']
+        c.placa_tracionador = request.form['placa_tracionador'].upper()
+        c.placa_carreta1 = ','.join([p.upper() for p in reb if p.strip()])
         db.session.commit(); flash('Conjunto atualizado!', 'success')
         return redirect(url_for('listar_conjuntos'))
     return render_template('editar_conjunto.html', conjunto=c)
@@ -156,7 +172,8 @@ def lancar_peso_manual(id):
     r = Romaneio.query.get_or_404(id)
     try:
         peso = float(request.form.get('peso_real_manual').replace(',', '.'))
-        r.peso_real = peso; r.status = 'Pendente Complemento' if peso > r.peso_fisco else 'Faturado'
+        r.peso_real = peso
+        r.status = 'Pendente Complemento' if peso > r.peso_fisco else 'Faturado'
         db.session.commit(); flash('Peso lançado!', 'success')
     except Exception as e: flash(f'Erro: {e}', 'danger')
     return redirect(url_for('detalhe_romaneio', id=id))
@@ -260,53 +277,6 @@ def configuracoes():
         db.session.commit(); flash('Parâmetros salvos!', 'success')
         return redirect(url_for('configuracoes'))
     return render_template('configuracoes.html', config=config)
-
-# --- ROTA SECRETA PARA IMPORTAR OS DADOS DO JSON ---
-@app.route('/rota-secreta-importacao')
-def rota_secreta_importacao():
-    from models import Motorista, Caminhao, ConjuntoVeicular, Romaneio, ConfiguracaoEmpresa
-    try:
-        if not os.path.exists('dados_backup.json'):
-            return "❌ Arquivo 'dados_backup.json' não encontrado no servidor."
-            
-        with open('dados_backup.json', 'r', encoding='utf-8') as f:
-            dados = json.load(f)
-
-        if dados.get("config") and not ConfiguracaoEmpresa.query.first():
-            db.session.add(ConfiguracaoEmpresa(**dados["config"]))
-
-        for m in dados.get("motoristas", []):
-            if not Motorista.query.filter_by(cpf=m["cpf"]).first():
-                db.session.add(Motorista(**m))
-        db.session.commit()
-
-        for c in dados.get("caminhoes", []):
-            if not Caminhao.query.filter_by(placa=c["placa"]).first():
-                db.session.add(Caminhao(**c))
-        db.session.commit()
-
-        for c in dados.get("conjuntos", []):
-            if not ConjuntoVeicular.query.filter_by(nome_conjunto=c["nome_conjunto"]).first():
-                db.session.add(ConjuntoVeicular(**c))
-        db.session.commit()
-
-        count_romaneios = 0
-        for r in dados.get("romaneios", []):
-            if not Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first():
-                mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
-                conj = ConjuntoVeicular.query.filter_by(placa_tracionador=r["conjunto_placa"]).first() if r.get("conjunto_placa") else None
-                
-                novo_r = Romaneio(
-                    numero_romaneio=r["numero_romaneio"], peso_fisco=r["peso_fisco"], peso_real=r["peso_real"],
-                    valor_tonelada=r["valor_tonelada"], status=r["status"], chave_venda=r.get("chave_venda"),
-                    motorista_id=mot.id if mot else None, conjunto_id=conj.id if conj else None
-                )
-                db.session.add(novo_r)
-                count_romaneios += 1
-        db.session.commit()
-        return f"✅ Sucesso! Dados importados: {len(dados.get('motoristas', []))} motoristas, {len(dados.get('conjuntos', []))} conjuntos e {count_romaneios} romaneios novos."
-    except Exception as e:
-        return f"❌ Erro ao importar: {e}"
 
 if __name__ == '__main__':
     app.run(debug=True)
