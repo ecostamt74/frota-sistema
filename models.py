@@ -33,7 +33,8 @@ class ConjuntoVeicular(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome_conjunto = db.Column(db.String(50), unique=True)
     placa_tracionador = db.Column(db.String(10), nullable=False)
-    placa_carreta1 = db.Column(db.String(10))
+    # CAMPO CORRIGIDO: Aumentado para 100 caracteres para caber várias placas
+    placa_carreta1 = db.Column(db.String(100)) 
 
 class Romaneio(db.Model):
     __tablename__ = 'romaneios'
@@ -70,6 +71,8 @@ class ConfiguracaoEmpresa(db.Model):
     nome_fantasia = db.Column(db.String(100), default='FBE Logística')
     peso_padrao_ton = db.Column(db.Float, default=45.0)
     valor_tonelada_padrao = db.Column(db.Float, default=465.0)
+    cfop_padrao = db.Column(db.String(10), default='5101')
+    cst_padrao = db.Column(db.String(10), default='51')
 
 class Abastecimento(db.Model):
     __tablename__ = 'abastecimentos'
