@@ -62,10 +62,8 @@ def inject_globals():
     nome_empresa = 'MTI Frotas'
     try:
         config = ConfiguracaoEmpresa.query.first()
-        if config:
-            nome_empresa = config.nome_fantasia
-    except Exception:
-        pass 
+        if config: nome_empresa = config.nome_fantasia
+    except Exception: pass 
         
     grupos = {}
     menus = [
@@ -113,7 +111,6 @@ def listar_motoristas(): return render_template('motoristas.html', motoristas=Mo
 @login_required
 def listar_caminhoes(): return render_template('caminhoes.html', caminhoes=Caminhao.query.all())
 
-# --- CONJUNTOS ---
 @app.route('/conjuntos', methods=['GET', 'POST'])
 @login_required
 def listar_conjuntos():
@@ -168,15 +165,12 @@ def relatorio_saldo_pdf():
         if not pendentes:
             flash('Não há romaneios pendentes.', 'warning')
             return redirect(url_for('saldo_pendente'))
-
         config = ConfiguracaoEmpresa.query.first()
         logo_filename = config.logo_filename if config else 'logo_padrao.png'
         total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
         total_valor = sum(r.dif_valor for r in pendentes)
-        
         from services.gerador_pdf import gerar_pdf_saldo
         pdf_buffer = gerar_pdf_saldo(pendentes, total_ton, total_valor, logo_filename)
-        
         return send_file(pdf_buffer, as_attachment=True, download_name="Relatorio_Saldo_Pendente.pdf", mimetype="application/pdf")
     except Exception as e:
         flash(f'Erro ao gerar PDF: {e}', 'danger')
@@ -216,9 +210,12 @@ def relatorio_espelho_excel():
 
         for i, r in enumerate(roms, 1):
             placa = r.conjunto.placa_tracionador if r.conjunto else "N/A"
-            data = r.data_criacao.strftime('%d/%m/%Y') if r.data_criacao else ''
+            data_pesagem = r.data_criacao.strftime('%d/%m/%Y') if r.data_criacao else ''
+            # USA A DATA DE ENTREGA DO BANCO, SE EXISTIR. SENÃO, USA A DATA DA PESAGEM.
+            data_entrega = r.data_entrega.strftime('%d/%m/%Y') if r.data_entrega else data_pesagem 
+            
             ws.append([
-                i, data, data, placa, r.numero_romaneio, 
+                i, data_pesagem, data_entrega, placa, r.numero_romaneio, 
                 r.peso_fisco, r.valor_tonelada, (r.peso_fisco * r.valor_tonelada), 
                 r.peso_real or 0, r.valor_tonelada, ((r.peso_real or 0) * r.valor_tonelada), 
                 round(r.dif_peso, 3), round(r.dif_valor, 2), r.motorista.nome if r.motorista else ''
@@ -244,13 +241,11 @@ def configuracoes():
             config.nome_fantasia = request.form.get('nome_fantasia', 'FBE')
             config.peso_padrao_ton = float(request.form.get('peso_padrao_ton', 45.0))
             config.valor_tonelada_padrao = float(request.form.get('valor_tonelada_padrao', 465.0))
-            
             logo_file = request.files.get('logo_file')
             if logo_file and logo_file.filename != '':
                 filename = secure_filename(logo_file.filename)
                 logo_file.save(os.path.join('static', 'img', filename))
                 config.logo_filename = filename
-                
             db.session.commit(); flash('Parâmetros salvos!', 'success')
             return redirect(url_for('configuracoes'))
         return render_template('configuracoes.html', config=config)
@@ -258,7 +253,7 @@ def configuracoes():
         flash(f'Erro nos parâmetros: {e}', 'danger')
         return redirect(url_for('index'))
 
-# --- ESTOQUE E CUSTOS ---
+# --- ESTOQUE E CUSTOS (Vazios para não travar) ---
 @app.route('/estoque')
 @login_required
 def painel_estoque(): return render_template('estoque.html', movimentos=[], total_entrada=0, total_saida=0, saldo_atual=0)
@@ -275,7 +270,7 @@ def listar_manutencoes(): return render_template('manutencoes.html', manutencoes
 @login_required
 def listar_multas(): return render_template('multas.html', multas=[], caminhoes=[], motoristas=[])
 
-# --- ROTAS SECRETAS DE TESTE ---
+# --- ROTAS SECRETAS DE RESET E IMPORTAÇÃO ---
 @app.route('/resetar-banco-nuvem')
 def resetar_banco_nuvem():
     try:
@@ -307,9 +302,19 @@ def rota_secreta_importacao():
         for r in dados.get("romaneios", []):
             if not Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first():
                 mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
+                
+                # Verifica se o JSON tem a data de entrega, se não tiver usa None
+                data_ent = r.get("data_entrega")
+                if data_ent:
+                    data_ent = datetime.strptime(data_ent, '%Y-%m-%d').date()
+                
                 db.session.add(Romaneio(
-                    numero_romaneio=r["numero_romaneio"], peso_fisco=r["peso_fisco"], peso_real=r["peso_real"],
-                    valor_tonelada=r["valor_tonelada"], status=r["status"],
+                    numero_romaneio=r["numero_romaneio"], 
+                    peso_fisco=r["peso_fisco"], 
+                    peso_real=r["peso_real"],
+                    valor_tonelada=r["valor_tonelada"], 
+                    status=r["status"],
+                    data_entrega=data_ent,
                     motorista_id=mot.id if mot else None
                 ))
         db.session.commit()

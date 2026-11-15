@@ -40,6 +40,7 @@ class Romaneio(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     numero_romaneio = db.Column(db.String(20), unique=True)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_entrega = db.Column(db.Date) # <--- CAMPO NOVO AQUI
     motorista_id = db.Column(db.Integer, db.ForeignKey('motoristas.id'))
     conjunto_id = db.Column(db.Integer, db.ForeignKey('conjuntos_veiculares.id'))
     chave_transf = db.Column(db.String(60))
@@ -72,7 +73,7 @@ class ConfiguracaoEmpresa(db.Model):
     valor_tonelada_padrao = db.Column(db.Float, default=465.0)
     cfop_padrao = db.Column(db.String(10), default='5101')
     cst_padrao = db.Column(db.String(10), default='51')
-    logo_filename = db.Column(db.String(200), default='logo_padrao.png') # CAMPO DA LOGO
+    logo_filename = db.Column(db.String(200), default='logo_padrao.png')
 
 class Abastecimento(db.Model):
     __tablename__ = 'abastecimentos'
