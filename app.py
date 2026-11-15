@@ -1,4 +1,5 @@
 import os, io
+import json
 from datetime import datetime, date
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -259,6 +260,53 @@ def configuracoes():
         db.session.commit(); flash('Parâmetros salvos!', 'success')
         return redirect(url_for('configuracoes'))
     return render_template('configuracoes.html', config=config)
+
+# --- ROTA SECRETA PARA IMPORTAR OS DADOS DO JSON ---
+@app.route('/rota-secreta-importacao')
+def rota_secreta_importacao():
+    from models import Motorista, Caminhao, ConjuntoVeicular, Romaneio, ConfiguracaoEmpresa
+    try:
+        if not os.path.exists('dados_backup.json'):
+            return "❌ Arquivo 'dados_backup.json' não encontrado no servidor."
+            
+        with open('dados_backup.json', 'r', encoding='utf-8') as f:
+            dados = json.load(f)
+
+        if dados.get("config") and not ConfiguracaoEmpresa.query.first():
+            db.session.add(ConfiguracaoEmpresa(**dados["config"]))
+
+        for m in dados.get("motoristas", []):
+            if not Motorista.query.filter_by(cpf=m["cpf"]).first():
+                db.session.add(Motorista(**m))
+        db.session.commit()
+
+        for c in dados.get("caminhoes", []):
+            if not Caminhao.query.filter_by(placa=c["placa"]).first():
+                db.session.add(Caminhao(**c))
+        db.session.commit()
+
+        for c in dados.get("conjuntos", []):
+            if not ConjuntoVeicular.query.filter_by(nome_conjunto=c["nome_conjunto"]).first():
+                db.session.add(ConjuntoVeicular(**c))
+        db.session.commit()
+
+        count_romaneios = 0
+        for r in dados.get("romaneios", []):
+            if not Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first():
+                mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
+                conj = ConjuntoVeicular.query.filter_by(placa_tracionador=r["conjunto_placa"]).first() if r.get("conjunto_placa") else None
+                
+                novo_r = Romaneio(
+                    numero_romaneio=r["numero_romaneio"], peso_fisco=r["peso_fisco"], peso_real=r["peso_real"],
+                    valor_tonelada=r["valor_tonelada"], status=r["status"], chave_venda=r.get("chave_venda"),
+                    motorista_id=mot.id if mot else None, conjunto_id=conj.id if conj else None
+                )
+                db.session.add(novo_r)
+                count_romaneios += 1
+        db.session.commit()
+        return f"✅ Sucesso! Dados importados: {len(dados.get('motoristas', []))} motoristas, {len(dados.get('conjuntos', []))} conjuntos e {count_romaneios} romaneios novos."
+    except Exception as e:
+        return f"❌ Erro ao importar: {e}"
 
 if __name__ == '__main__':
     app.run(debug=True)
