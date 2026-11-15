@@ -135,7 +135,6 @@ def detalhe_romaneio(id): return render_template('romaneio_detalhe.html', romane
 @login_required
 def saldo_pendente():
     try:
-        # Pega TODOS os romaneios com status Pendente, sem olhar a data
         pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
         
         total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
@@ -151,7 +150,6 @@ def saldo_pendente():
 def fechar_saldo():
     chave = request.form.get('chave_complementar')
     
-    # Pega TODOS os pendentes, sem olhar data
     pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
 
     if not pendentes:
@@ -172,6 +170,20 @@ def fechar_saldo():
     flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados com a chave {chave}.', 'success')
     return redirect(url_for('saldo_pendente'))
 
+# --- ROTA DE LIMPEZA DE RESÍDUOS DE TESTE ---
+@app.route('/limpar-residuos-teste')
+def limpar_residuos_teste():
+    try:
+        residuos = Romaneio.query.filter(Romaneio.numero_romaneio.like('%-RES')).all()
+        count = len(residuos)
+        for r in residuos:
+            db.session.delete(r)
+        db.session.commit()
+        return f"✅ {count} romaneio(s) residual(is) de teste removido(s) com sucesso! A lista voltou ao normal."
+    except Exception as e:
+        db.session.rollback()
+        return f"❌ Erro ao limpar resíduos: {e}"
+
 # --- IMPORTAR XML DA NF (Com Lógica de Baixa Parcial e Residual) ---
 @app.route('/importar-xml-nfe', methods=['POST'])
 @login_required
@@ -191,7 +203,6 @@ def importar_xml_nfe():
         qCom = float(root.find('.//ns:det/ns:prod/ns:qCom', ns).text)
         vProd = float(root.find('.//ns:det/ns:prod/ns:vProd', ns).text)
         
-        # Se for uma NF Complementar (diferente de 45t)
         if abs(qCom - 45.0) > 0.01:
             pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
 
@@ -204,13 +215,11 @@ def importar_xml_nfe():
                 
                 if r.dif_peso > 0:
                     if r.dif_peso <= saldo_restante_nota:
-                        # Baixa total do romaneio
                         r.status = 'Faturado'
                         r.chave_complementar = chave
                         saldo_restante_nota -= r.dif_peso
                         total_baixado += r.dif_peso
                     else:
-                        # Baixa parcial do romaneio (cria o residual)
                         ton_baixada = saldo_restante_nota
                         r.status = 'Faturado'
                         r.chave_complementar = chave
@@ -422,7 +431,6 @@ def importar_novembro():
 
         count = 0
         for r in dados.get("romaneios", []):
-            # Força a atualização se já existir
             romaneio_existente = Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first()
             
             if romaneio_existente:
