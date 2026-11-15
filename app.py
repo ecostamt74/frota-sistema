@@ -308,5 +308,25 @@ def rota_secreta_importacao():
     except Exception as e:
         return f"❌ Erro ao importar: {e}"
 
+# --- ROTA PARA RESETAR O BANCO NA NUVEM ---
+@app.route('/resetar-banco-nuvem')
+def resetar_banco_nuvem():
+    from models import db
+    try:
+        db.drop_all()
+        db.create_all()
+        
+        u = Usuario(username='admin', nome='Admin')
+        u.set_senha('admin123')
+        db.session.add(u)
+        
+        db.session.add(ConfiguracaoEmpresa())
+        
+        db.session.commit()
+        return "✅ Banco de dados resetado e recriado com sucesso! O usuário admin foi criado."
+    except Exception as e:
+        db.session.rollback()
+        return f"❌ Erro ao resetar: {e}"
+
 if __name__ == '__main__':
     app.run(debug=True)
