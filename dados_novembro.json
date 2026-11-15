@@ -1,0 +1,29 @@
+{
+  "motoristas": [
+    {"nome": "LUIZ HENRIQUE MANTOVANI", "cpf": "11111111111", "cnh": ""},
+    {"nome": "JOSE SIMAR DE OLIVEIRA", "cpf": "12243728168", "cnh": ""},
+    {"nome": "ANDERSON WAGNER BELMIRO", "cpf": "22222222222", "cnh": ""},
+    {"nome": "ENIVALDO SILVA DE OLIVEIRA", "cpf": "33333333333", "cnh": ""},
+    {"nome": "CLEIDIOMAR FERREIRA DA COSTA", "cpf": "00859697100", "cnh": ""}
+  ],
+  "conjuntos": [
+    {"nome_conjunto": "Bitrem QCN9E80", "placa_tracionador": "QCN9E80", "placa_carreta1": ""},
+    {"nome_conjunto": "Bitrem SUH6G73", "placa_tracionador": "SUH6G73", "placa_carreta1": ""},
+    {"nome_conjunto": "Bitrem STK1E07", "placa_tracionador": "STK1E07", "placa_carreta1": ""},
+    {"nome_conjunto": "Bitrem QCM9E80", "placa_tracionador": "QCM9E80", "placa_carreta1": ""}
+  ],
+  "romaneios": [
+    {"numero_romaneio": "134801", "numero_nota_original": "137", "data_entrega": "2026-11-10", "peso_fisco": 45.0, "peso_real": 51.52, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "11111111111", "conjunto_placa": "QCN9E80"},
+    {"numero_romaneio": "134458", "numero_nota_original": "142", "data_entrega": "2026-10-31", "peso_fisco": 45.0, "peso_real": 45.66, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "22222222222", "conjunto_placa": "QCM9E80"},
+    {"numero_romaneio": "134486", "numero_nota_original": "150", "data_entrega": "2026-10-31", "peso_fisco": 45.0, "peso_real": 58.40, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "33333333333", "conjunto_placa": "STK1E07"},
+    {"numero_romaneio": "134502", "numero_nota_original": "154", "data_entrega": "2026-11-01", "peso_fisco": 45.0, "peso_real": 50.64, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "11111111111", "conjunto_placa": "QCN9E80"},
+    {"numero_romaneio": "134562", "numero_nota_original": "153", "data_entrega": "2026-11-02", "peso_fisco": 45.0, "peso_real": 53.22, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "12243728168", "conjunto_placa": "SUH6G73"},
+    {"numero_romaneio": "134593", "numero_nota_original": "155", "data_entrega": "2026-11-03", "peso_fisco": 45.0, "peso_real": 58.46, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "33333333333", "conjunto_placa": "STK1E07"},
+    {"numero_romaneio": "134595", "numero_nota_original": "156", "data_entrega": "2026-11-03", "peso_fisco": 45.0, "peso_real": 56.44, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "11111111111", "conjunto_placa": "QCN9E80"},
+    {"numero_romaneio": "134626", "numero_nota_original": "157", "data_entrega": "2026-11-04", "peso_fisco": 45.0, "peso_real": 57.36, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "12243728168", "conjunto_placa": "SUH6G73"},
+    {"numero_romaneio": "134680", "numero_nota_original": "138", "data_entrega": "2026-11-06", "peso_fisco": 45.0, "peso_real": 54.22, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "33333333333", "conjunto_placa": "STK1E07"},
+    {"numero_romaneio": "134717", "numero_nota_original": "152", "data_entrega": "2026-11-06", "peso_fisco": 45.0, "peso_real": 54.88, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "00859697100", "conjunto_placa": "QCM9E80"},
+    {"numero_romaneio": "134718", "numero_nota_original": "119", "data_entrega": "2026-11-07", "peso_fisco": 45.0, "peso_real": 52.46, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "11111111111", "conjunto_placa": "QCN9E80"},
+    {"numero_romaneio": "134736", "numero_nota_original": "160", "data_entrega": "2026-11-07", "peso_fisco": 45.0, "peso_real": 50.52, "valor_tonelada": 465.0, "status": "Pendente Complemento", "motorista_cpf": "12243728168", "conjunto_placa": "SUH6G73"}
+  ]
+}
