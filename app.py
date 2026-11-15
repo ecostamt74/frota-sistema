@@ -451,5 +451,55 @@ def rota_secreta_importacao():
     except Exception as e:
         return f"❌ Erro: {e}"
 
+@app.route('/importar-novembro')
+def importar_novembro():
+    try:
+        if not os.path.exists('dados_novembro.json'):
+            return "❌ Arquivo dados_novembro.json não encontrado no servidor."
+            
+        with open('dados_novembro.json', 'r', encoding='utf-8') as f:
+            dados = json.load(f)
+
+        # 1. Importa Motoristas
+        for m in dados.get("motoristas", []):
+            if not Motorista.query.filter_by(cpf=m["cpf"]).first():
+                db.session.add(Motorista(**m))
+        db.session.commit()
+
+        # 2. Importa Conjuntos
+        for c in dados.get("conjuntos", []):
+            if not ConjuntoVeicular.query.filter_by(placa_tracionador=c["placa_tracionador"]).first():
+                db.session.add(ConjuntoVeicular(**c))
+        db.session.commit()
+
+        # 3. Importa Romaneios
+        count = 0
+        for r in dados.get("romaneios", []):
+            if not Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first():
+                mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
+                conj = ConjuntoVeicular.query.filter_by(placa_tracionador=r["conjunto_placa"]).first() if r.get("conjunto_placa") else None
+                
+                data_ent = datetime.strptime(r["data_entrega"], '%Y-%m-%d').date()
+                
+                novo_r = Romaneio(
+                    numero_romaneio=r["numero_romaneio"],
+                    numero_nota_original=r["numero_nota_original"],
+                    peso_fisco=r["peso_fisco"],
+                    peso_real=r["peso_real"],
+                    valor_tonelada=r["valor_tonelada"],
+                    status=r["status"],
+                    data_entrega=data_ent,
+                    data_criacao=datetime.now(),
+                    motorista_id=mot.id if mot else None,
+                    conjunto_id=conj.id if conj else None
+                )
+                db.session.add(novo_r)
+                count += 1
+        db.session.commit()
+        return f"✅ Sucesso! {count} romaneios de Novembro importados."
+    except Exception as e:
+        db.session.rollback()
+        return f"❌ Erro ao importar: {e}"
+
 if __name__ == '__main__':
     app.run(debug=True)
