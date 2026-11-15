@@ -1,15 +1,10 @@
 {% extends "base.html" %}{% block page_title %}Controle de Romaneios{% endblock %}{% block content %}
 <h1>Controle de Faturamento</h1>
-<p style="color: #666;">Para realizar o fechamento de acerto, acesse o menu <strong>"Saldo Pendente"</strong>.</p>
+<p style="color: #666;">Para realizar o fechamento de acerto, acesse o menu <strong>"💰 Saldo Pendente"</strong>.</p>
 
 <div style="background:#fff3cd; padding:15px; border-radius:8px; margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
     <a href="{{ url_for('relatorio_simples_excel') }}" class="btn btn-success">📥 Relatório Simples</a>
     <a href="{{ url_for('relatorio_espelho_excel') }}" class="btn btn-primary">📊 Relatório Espelho</a>
-    
-    <form method="POST" action="{{ url_for('importar_planilha') }}" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center; margin-left: auto;">
-        <input type="file" name="arquivo_excel" accept=".xlsx" required style="padding: 5px; border: 1px solid #ccc; border-radius: 5px;">
-        <button type="submit" class="btn" style="background: #8b5cf6; color: white;">📥 Importar Planilha</button>
-    </form>
 </div>
 
 <div class="card" style="margin-top:20px;">
