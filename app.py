@@ -182,6 +182,29 @@ def fechar_saldo():
     flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados com a chave {chave}.', 'success')
     return redirect(url_for('saldo_pendente'))
 
+# --- ROTA DE LIMPEZA (BAIXA MANUAL DOS ROMANEIOS ANTIGOS) ---
+@app.route('/baixar-romaneios-antigos')
+def baixar_romaneios_antigos():
+    try:
+        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
+        count = 0
+        for r in pendentes:
+            r.status = 'Faturado'
+            r.chave_complementar = 'ACERTO_OUTUBRO_NOVEMBRO'
+            count += 1
+        
+        novo_fechamento = FechamentoAcerto(
+            chave_nota='MARCO_ZERO_POS_NF_169',
+            total_toneladas=0,
+            total_valor=0
+        )
+        db.session.add(novo_fechamento)
+        db.session.commit()
+        return f"✅ {count} romaneios antigos foram baixados como 'Faturado'. O sistema está limpo para o novo ciclo. Acesse a tela de Saldo Pendente."
+    except Exception as e:
+        db.session.rollback()
+        return f"❌ Erro ao baixar romaneios: {e}"
+
 # --- IMPORTAR XML DA NF ---
 @app.route('/importar-xml-nfe', methods=['POST'])
 @login_required
