@@ -26,7 +26,7 @@
     </div>
 </div>
 
-<!-- NOVO: Importar XML da NF -->
+<!-- Importar XML da NF -->
 <div class="card" style="margin-top: 20px; background: #e0f2fe; border: 1px solid #bae6fd;">
     <div class="card-header" style="background: #bae6fd;">
         <div class="card-title" style="color: #0369a1;">Importar Nota Fiscal (XML)</div>
@@ -93,6 +93,15 @@
                 <tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">Nenhum romaneio pendente. Tudo já foi faturado!</td></tr>
                 {% endfor %}
             </tbody>
+            <!-- NOVO: Linha de Totais -->
+            <tfoot style="background: #f8fafc; border-top: 2px solid #e2e8f0;">
+                <tr>
+                    <td colspan="4" style="padding: 10px; text-align: right; font-weight: bold; color: #64748b;">TOTAIS:</td>
+                    <td style="padding: 10px; font-weight: bold; color: #64748b;">-</td>
+                    <td style="padding: 10px; font-weight: bold; color: red;">{{ "%.3f"|format(total_ton) }}t</td>
+                    <td style="padding: 10px; font-weight: bold; color: #16a34a;">R$ {{ "%.2f"|format(total_valor) }}</td>
+                </tr>
+            </tfoot>
         </table>
     </div>
 </div>
