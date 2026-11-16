@@ -170,19 +170,26 @@ def fechar_saldo():
     flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados com a chave {chave}.', 'success')
     return redirect(url_for('saldo_pendente'))
 
-# --- ROTA DE LIMPEZA DE RESÍDUOS DE TESTE ---
-@app.route('/limpar-residuos-teste')
-def limpar_residuos_teste():
+# --- ROTA DE LIMPEZA HISTÓRICA (MANTÉM APENAS OS ROMANEIOS DA PLANILHA) ---
+@app.route('/limpar-historico-antigo')
+def limpar_historico_antigo():
     try:
-        residuos = Romaneio.query.filter(Romaneio.numero_romaneio.like('%-RES')).all()
-        count = len(residuos)
-        for r in residuos:
+        romaneios_atuais = ['134801', '134736', '134762']
+        
+        romaneios_antigos = Romaneio.query.filter(~Romaneio.numero_romaneio.in_(romaneios_atuais)).all()
+        count = len(romaneios_antigos)
+        for r in romaneios_antigos:
             db.session.delete(r)
+            
+        for r in Romaneio.query.filter(Romaneio.numero_romaneio.in_(romaneios_atuais)).all():
+            r.status = 'Pendente Complemento'
+            r.chave_complementar = None
+        
         db.session.commit()
-        return f"✅ {count} romaneio(s) residual(is) de teste removido(s) com sucesso! A lista voltou ao normal."
+        return f"✅ {count} romaneios antigos foram apagados. O sistema agora tem apenas os 3 romaneios do ciclo atual. Acesse a tela de Saldo Pendente."
     except Exception as e:
         db.session.rollback()
-        return f"❌ Erro ao limpar resíduos: {e}"
+        return f"❌ Erro: {e}"
 
 # --- IMPORTAR XML DA NF (Com Lógica de Baixa Parcial e Residual) ---
 @app.route('/importar-xml-nfe', methods=['POST'])
