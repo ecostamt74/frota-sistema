@@ -130,7 +130,7 @@ def listar_romaneios(): return render_template('romaneios.html', romaneios=Roman
 @login_required
 def detalhe_romaneio(id): return render_template('romaneio_detalhe.html', romaneio=Romaneio.query.get_or_404(id))
 
-# --- SALDO PENDENTE (SEM DATA DE CORTE) ---
+# --- SALDO PENDENTE ---
 @app.route('/saldo-pendente')
 @login_required
 def saldo_pendente():
@@ -170,7 +170,7 @@ def fechar_saldo():
     flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados com a chave {chave}.', 'success')
     return redirect(url_for('saldo_pendente'))
 
-# --- ROTA DE LIMPEZA HISTÓRICA (MANTÉM APENAS OS ROMANEIOS DA PLANILHA) ---
+# --- ROTA DE LIMPEZA HISTÓRICA ---
 @app.route('/limpar-historico-antigo')
 def limpar_historico_antigo():
     try:
@@ -186,12 +186,12 @@ def limpar_historico_antigo():
             r.chave_complementar = None
         
         db.session.commit()
-        return f"✅ {count} romaneios antigos foram apagados. O sistema agora tem apenas os 3 romaneios do ciclo atual. Acesse a tela de Saldo Pendente."
+        return f"✅ {count} romaneios antigos foram apagados. O sistema agora tem apenas os romaneios do ciclo atual."
     except Exception as e:
         db.session.rollback()
         return f"❌ Erro: {e}"
 
-# --- IMPORTAR XML DA NF (Com Lógica de Baixa Parcial e Residual) ---
+# --- IMPORTAR XML ---
 @app.route('/importar-xml-nfe', methods=['POST'])
 @login_required
 def importar_xml_nfe():
@@ -272,6 +272,7 @@ def importar_xml_nfe():
 
     return redirect(url_for('saldo_pendente'))
 
+# --- RELATÓRIOS ---
 @app.route('/relatorio-saldo-pdf')
 @login_required
 def relatorio_saldo_pdf():
@@ -323,7 +324,9 @@ def relatorio_espelho_excel():
             
         wb = Workbook(); ws = wb.active
         ws.merge_cells('A1:N1'); ws['A1'] = "FBE FAST BIOMASS X QUEIROZ - 5.122"; ws['A1'].font = Font(bold=True, size=14); ws['A1'].alignment = Alignment(horizontal='center')
-        headers = ["QTD", "DATA", "DATA ENTREGA", "PLACA CAVALO", "NOTA", "TON FISCO", "VALOR/TON", "VALOR NF", "TON ENTREGUE", "VALOR/TON", "TOTAL", "DIF FISCO", "DIF VALOR", "MOTORISTA"]
+        
+        # NOVO CABEÇALHO COM ROMANEIO E NOTA SEPARADOS
+        headers = ["QTD", "DATA", "DATA ENTREGA", "PLACA CAVALO", "ROMANEIO", "NOTA", "TON FISCO", "VALOR/TON", "VALOR NF", "TON ENTREGUE", "VALOR/TON", "TOTAL", "DIF FISCO", "DIF VALOR", "MOTORISTA"]
         ws.append(headers)
         for cell in ws[2]:
             cell.font = Font(bold=True, color="FFFFFF")
@@ -335,7 +338,9 @@ def relatorio_espelho_excel():
             data_entrega = r.data_entrega.strftime('%d/%m/%Y') if r.data_entrega else data_pesagem 
             
             ws.append([
-                i, data_pesagem, data_entrega, placa, r.numero_nota_original or r.numero_romaneio, 
+                i, data_pesagem, data_entrega, placa, 
+                r.numero_romaneio, # ROMANEIO SAP
+                r.numero_nota_original or '-', # NOTA QUEIROZ
                 r.peso_fisco, r.valor_tonelada, (r.peso_fisco * r.valor_tonelada), 
                 r.peso_real or 0, r.valor_tonelada, ((r.peso_real or 0) * r.valor_tonelada), 
                 round(r.dif_peso, 3), round(r.dif_valor, 2), r.motorista.nome if r.motorista else ''
@@ -346,7 +351,7 @@ def relatorio_espelho_excel():
         flash(f'Erro: {e}', 'danger')
         return redirect(url_for('index'))
 
-# --- PARÂMETROS E LOGO ---
+# --- PARÂMETROS ---
 @app.route('/configuracoes', methods=['GET', 'POST'])
 @login_required
 def configuracoes():
@@ -390,7 +395,7 @@ def listar_manutencoes(): return render_template('manutencoes.html', manutencoes
 @login_required
 def listar_multas(): return render_template('multas.html', multas=[], caminhoes=[], motoristas=[])
 
-# --- ROTAS SECRETAS DE RESET E IMPORTAÇÃO ---
+# --- ROTAS SECRETAS ---
 @app.route('/resetar-banco-nuvem')
 def resetar_banco_nuvem():
     try:
