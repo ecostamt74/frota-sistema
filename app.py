@@ -1,7 +1,7 @@
 import os, io
 import json
 import xml.etree.ElementTree as ET
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
@@ -121,21 +121,47 @@ def listar_conjuntos():
         return redirect(url_for('listar_conjuntos'))
     return render_template('conjuntos.html', conjuntos=ConjuntoVeicular.query.all())
 
-# --- ROMANEIOS ---
+# --- ROMANEIOS (COM FILTRO) ---
 @app.route('/romaneios')
 @login_required
-def listar_romaneios(): return render_template('romaneios.html', romaneios=Romaneio.query.order_by(Romaneio.id.desc()).all())
+def listar_romaneios():
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    status_filtro = request.args.get('status')
+    
+    query = Romaneio.query
+    if data_inicio:
+        query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
+    if data_fim:
+        query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
+    if status_filtro and status_filtro != 'Todos':
+        query = query.filter(Romaneio.status == status_filtro)
+        
+    romaneios = query.order_by(Romaneio.id.desc()).all()
+    return render_template('romaneios.html', romaneios=romaneios)
 
 @app.route('/romaneios/<int:id>')
 @login_required
 def detalhe_romaneio(id): return render_template('romaneio_detalhe.html', romaneio=Romaneio.query.get_or_404(id))
 
-# --- SALDO PENDENTE ---
+# --- SALDO PENDENTE (COM FILTRO E HISTÓRICO) ---
 @app.route('/saldo-pendente')
 @login_required
 def saldo_pendente():
     try:
-        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+        data_inicio = request.args.get('data_inicio')
+        data_fim = request.args.get('data_fim')
+        status_filtro = request.args.get('status', 'Pendente Complemento')
+
+        query = Romaneio.query
+        if data_inicio:
+            query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
+        if data_fim:
+            query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
+        if status_filtro and status_filtro != 'Todos':
+            query = query.filter(Romaneio.status == status_filtro)
+
+        pendentes = query.order_by(Romaneio.id.asc()).all()
         
         total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
         total_valor = sum(r.dif_valor for r in pendentes if r.dif_valor > 0)
@@ -170,26 +196,58 @@ def fechar_saldo():
     flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados com a chave {chave}.', 'success')
     return redirect(url_for('saldo_pendente'))
 
-# --- ROTA DE LIMPEZA HISTÓRICA ---
-@app.route('/limpar-historico-antigo')
-def limpar_historico_antigo():
+# --- ROTA PARA RESTAURAR O HISTÓRICO (QUE FOI APAGADO) ---
+@app.route('/restaurar-historico')
+def restaurar_historico():
     try:
-        romaneios_atuais = ['134801', '134736', '134762']
-        
-        romaneios_antigos = Romaneio.query.filter(~Romaneio.numero_romaneio.in_(romaneios_atuais)).all()
-        count = len(romaneios_antigos)
-        for r in romaneios_antigos:
-            db.session.delete(r)
+        if not os.path.exists('dados_novembro.json'):
+            return "❌ Arquivo dados_novembro.json não encontrado no servidor."
             
-        for r in Romaneio.query.filter(Romaneio.numero_romaneio.in_(romaneios_atuais)).all():
-            r.status = 'Pendente Complemento'
-            r.chave_complementar = None
-        
+        with open('dados_novembro.json', 'r', encoding='utf-8') as f:
+            dados = json.load(f)
+
+        for m in dados.get("motoristas", []):
+            if not Motorista.query.filter_by(cpf=m["cpf"]).first():
+                db.session.add(Motorista(**m))
         db.session.commit()
-        return f"✅ {count} romaneios antigos foram apagados. O sistema agora tem apenas os romaneios do ciclo atual."
+
+        for c in dados.get("conjuntos", []):
+            if not ConjuntoVeicular.query.filter_by(placa_tracionador=c["placa_tracionador"]).first():
+                db.session.add(ConjuntoVeicular(**c))
+        db.session.commit()
+
+        count = 0
+        for r in dados.get("romaneios", []):
+            romaneio_existente = Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first()
+            
+            if romaneio_existente:
+                # Se já existe, só atualiza o status para não perder a baixa que foi feita
+                count += 1
+            else:
+                mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
+                conj = ConjuntoVeicular.query.filter_by(placa_tracionador=r["conjunto_placa"]).first() if r.get("conjunto_placa") else None
+                
+                data_ent = datetime.strptime(r["data_entrega"], '%Y-%m-%d').date()
+                
+                novo_r = Romaneio(
+                    numero_romaneio=r["numero_romaneio"],
+                    numero_nota_original=r["numero_nota_original"],
+                    peso_fisco=r["peso_fisco"],
+                    peso_real=r["peso_real"],
+                    valor_tonelada=r["valor_tonelada"],
+                    status=r["status"],
+                    data_entrega=data_ent,
+                    data_criacao=datetime.now(),
+                    motorista_id=mot.id if mot else None,
+                    conjunto_id=conj.id if conj else None
+                )
+                db.session.add(novo_r)
+                count += 1
+        db.session.commit()
+        return f"✅ Histórico restaurado! {count} romaneios trazidos de volta ao sistema. Acesse a tela de Romaneios."
     except Exception as e:
         db.session.rollback()
-        return f"❌ Erro: {e}"
+        return f"❌ Erro ao restaurar: {e}"
 
 # --- IMPORTAR XML ---
 @app.route('/importar-xml-nfe', methods=['POST'])
@@ -272,60 +330,67 @@ def importar_xml_nfe():
 
     return redirect(url_for('saldo_pendente'))
 
-# --- RELATÓRIOS ---
+# --- RELATÓRIOS COM FILTRO ---
 @app.route('/relatorio-saldo-pdf')
 @login_required
 def relatorio_saldo_pdf():
     try:
-        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+        data_inicio = request.args.get('data_inicio')
+        data_fim = request.args.get('data_fim')
+        status_filtro = request.args.get('status', 'Pendente Complemento')
 
-        if not pendentes:
-            flash('Não há romaneios pendentes.', 'warning')
+        query = Romaneio.query
+        if data_inicio:
+            query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
+        if data_fim:
+            query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
+        if status_filtro and status_filtro != 'Todos':
+            query = query.filter(Romaneio.status == status_filtro)
+
+        roms = query.order_by(Romaneio.id.asc()).all()
+
+        if not roms:
+            flash('Não há romaneios para o filtro selecionado.', 'warning')
             return redirect(url_for('saldo_pendente'))
             
         config = ConfiguracaoEmpresa.query.first()
         logo_filename = config.logo_filename if config else 'logo_padrao.png'
         
-        total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
-        total_valor = sum(r.dif_valor for r in pendentes if r.dif_valor > 0)
+        total_ton = sum(r.dif_peso for r in roms if r.dif_peso > 0)
+        total_valor = sum(r.dif_valor for r in roms if r.dif_valor > 0)
         
         from services.gerador_pdf import gerar_pdf_saldo
-        pdf_buffer = gerar_pdf_saldo(pendentes, total_ton, total_valor, logo_filename)
+        pdf_buffer = gerar_pdf_saldo(roms, total_ton, total_valor, logo_filename)
         return send_file(pdf_buffer, as_attachment=True, download_name="Relatorio_Saldo_Pendente.pdf", mimetype="application/pdf")
     except Exception as e:
         flash(f'Erro ao gerar PDF: {e}', 'danger')
         return redirect(url_for('saldo_pendente'))
 
-@app.route('/relatorio-simples-excel')
-@login_required
-def relatorio_simples_excel():
-    try:
-        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
-        
-        wb = Workbook(); ws = wb.active
-        ws.append(["Romaneio", "Motorista", "Peso Fisco", "Peso Real", "Diferença", "Valor a Receber"])
-        for r in pendentes:
-            ws.append([r.numero_romaneio, r.motorista.nome if r.motorista else '', r.peso_fisco, r.peso_real or 0, round(r.dif_peso, 3), round(r.dif_valor, 2)])
-        arq = io.BytesIO(); wb.save(arq); arq.seek(0)
-        return send_file(arq, as_attachment=True, download_name="Relatorio_Simples.xlsx")
-    except Exception as e:
-        flash(f'Erro: {e}', 'danger')
-        return redirect(url_for('index'))
-
 @app.route('/relatorio-espelho-excel')
 @login_required
 def relatorio_espelho_excel():
     try:
-        roms = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+        data_inicio = request.args.get('data_inicio')
+        data_fim = request.args.get('data_fim')
+        status_filtro = request.args.get('status', 'Pendente Complemento')
+
+        query = Romaneio.query
+        if data_inicio:
+            query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
+        if data_fim:
+            query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
+        if status_filtro and status_filtro != 'Todos':
+            query = query.filter(Romaneio.status == status_filtro)
+
+        roms = query.order_by(Romaneio.id.asc()).all()
         
         if not roms:
-            flash('Não há romaneios pendentes.', 'warning')
+            flash('Não há romaneios para o filtro selecionado.', 'warning')
             return redirect(url_for('saldo_pendente'))
             
         wb = Workbook(); ws = wb.active
         ws.merge_cells('A1:N1'); ws['A1'] = "FBE FAST BIOMASS X QUEIROZ - 5.122"; ws['A1'].font = Font(bold=True, size=14); ws['A1'].alignment = Alignment(horizontal='center')
         
-        # NOVO CABEÇALHO COM ROMANEIO E NOTA SEPARADOS
         headers = ["QTD", "DATA", "DATA ENTREGA", "PLACA CAVALO", "ROMANEIO", "NOTA", "TON FISCO", "VALOR/TON", "VALOR NF", "TON ENTREGUE", "VALOR/TON", "TOTAL", "DIF FISCO", "DIF VALOR", "MOTORISTA"]
         ws.append(headers)
         for cell in ws[2]:
@@ -339,8 +404,8 @@ def relatorio_espelho_excel():
             
             ws.append([
                 i, data_pesagem, data_entrega, placa, 
-                r.numero_romaneio, # ROMANEIO SAP
-                r.numero_nota_original or '-', # NOTA QUEIROZ
+                r.numero_romaneio, 
+                r.numero_nota_original or '-', 
                 r.peso_fisco, r.valor_tonelada, (r.peso_fisco * r.valor_tonelada), 
                 r.peso_real or 0, r.valor_tonelada, ((r.peso_real or 0) * r.valor_tonelada), 
                 round(r.dif_peso, 3), round(r.dif_valor, 2), r.motorista.nome if r.motorista else ''
@@ -421,60 +486,6 @@ def atualizar_banco_seguro():
         return "✅ Banco atualizado com sucesso! As colunas novas foram adicionadas."
     except Exception as e:
         return f"❌ Erro ao atualizar: {e}"
-
-@app.route('/importar-novembro')
-def importar_novembro():
-    try:
-        if not os.path.exists('dados_novembro.json'):
-            return "❌ Arquivo dados_novembro.json não encontrado no servidor."
-            
-        with open('dados_novembro.json', 'r', encoding='utf-8') as f:
-            dados = json.load(f)
-
-        for m in dados.get("motoristas", []):
-            if not Motorista.query.filter_by(cpf=m["cpf"]).first():
-                db.session.add(Motorista(**m))
-        db.session.commit()
-
-        for c in dados.get("conjuntos", []):
-            if not ConjuntoVeicular.query.filter_by(placa_tracionador=c["placa_tracionador"]).first():
-                db.session.add(ConjuntoVeicular(**c))
-        db.session.commit()
-
-        count = 0
-        for r in dados.get("romaneios", []):
-            romaneio_existente = Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first()
-            
-            if romaneio_existente:
-                romaneio_existente.status = 'Pendente Complemento'
-                romaneio_existente.chave_complementar = None
-                romaneio_existente.peso_real = r["peso_real"]
-                count += 1
-            else:
-                mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
-                conj = ConjuntoVeicular.query.filter_by(placa_tracionador=r["conjunto_placa"]).first() if r.get("conjunto_placa") else None
-                
-                data_ent = datetime.strptime(r["data_entrega"], '%Y-%m-%d').date()
-                
-                novo_r = Romaneio(
-                    numero_romaneio=r["numero_romaneio"],
-                    numero_nota_original=r["numero_nota_original"],
-                    peso_fisco=r["peso_fisco"],
-                    peso_real=r["peso_real"],
-                    valor_tonelada=r["valor_tonelada"],
-                    status=r["status"],
-                    data_entrega=data_ent,
-                    data_criacao=datetime.now(),
-                    motorista_id=mot.id if mot else None,
-                    conjunto_id=conj.id if conj else None
-                )
-                db.session.add(novo_r)
-                count += 1
-        db.session.commit()
-        return f"✅ Sucesso! {count} romaneios de Novembro restaurados/importados."
-    except Exception as e:
-        db.session.rollback()
-        return f"❌ Erro ao importar: {e}"
 
 if __name__ == '__main__':
     app.run(debug=True)
