@@ -105,46 +105,65 @@ def index(): return render_template('index.html')
 # --- MOTORISTAS E CAMINHÕES ---
 @app.route('/motoristas')
 @login_required
-def listar_motoristas(): return render_template('motoristas.html', motoristas=Motorista.query.all())
+def listar_motoristas(): 
+    try:
+        return render_template('motoristas.html', motoristas=Motorista.query.all())
+    except Exception as e:
+        return f"Erro em Motoristas: {e}"
 
 @app.route('/caminhoes')
 @login_required
-def listar_caminhoes(): return render_template('caminhoes.html', caminhoes=Caminhao.query.all())
+def listar_caminhoes(): 
+    try:
+        return render_template('caminhoes.html', caminhoes=Caminhao.query.all())
+    except Exception as e:
+        return f"Erro em Caminhões: {e}"
 
 @app.route('/conjuntos', methods=['GET', 'POST'])
 @login_required
 def listar_conjuntos():
-    if request.method == 'POST':
-        reb = ','.join([p.upper() for p in request.form.getlist('reboques[]') if p.strip()])
-        db.session.add(ConjuntoVeicular(nome_conjunto=request.form['nome_conjunto'], placa_tracionador=request.form['placa_tracionador'].upper(), placa_carreta1=reb))
-        db.session.commit(); flash('Conjunto cadastrado!', 'success')
-        return redirect(url_for('listar_conjuntos'))
-    return render_template('conjuntos.html', conjuntos=ConjuntoVeicular.query.all())
+    try:
+        if request.method == 'POST':
+            reb = ','.join([p.upper() for p in request.form.getlist('reboques[]') if p.strip()])
+            db.session.add(ConjuntoVeicular(nome_conjunto=request.form['nome_conjunto'], placa_tracionador=request.form['placa_tracionador'].upper(), placa_carreta1=reb))
+            db.session.commit(); flash('Conjunto cadastrado!', 'success')
+            return redirect(url_for('listar_conjuntos'))
+        return render_template('conjuntos.html', conjuntos=ConjuntoVeicular.query.all())
+    except Exception as e:
+        return f"Erro em Conjuntos: {e}"
 
-# --- ROMANEIOS (COM FILTRO) ---
+# --- ROMANEIOS (COM FILTRO E BLINDADO) ---
 @app.route('/romaneios')
 @login_required
 def listar_romaneios():
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    status_filtro = request.args.get('status')
-    
-    query = Romaneio.query
-    if data_inicio:
-        query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
-    if data_fim:
-        query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
-    if status_filtro and status_filtro != 'Todos':
-        query = query.filter(Romaneio.status == status_filtro)
+    try:
+        data_inicio = request.args.get('data_inicio')
+        data_fim = request.args.get('data_fim')
+        status_filtro = request.args.get('status')
         
-    romaneios = query.order_by(Romaneio.id.desc()).all()
-    return render_template('romaneios.html', romaneios=romaneios)
+        query = Romaneio.query
+        if data_inicio:
+            query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
+        if data_fim:
+            query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
+        if status_filtro and status_filtro != 'Todos':
+            query = query.filter(Romaneio.status == status_filtro)
+            
+        romaneios = query.order_by(Romaneio.id.desc()).all()
+        return render_template('romaneios.html', romaneios=romaneios)
+    except Exception as e:
+        return f"Erro ao carregar lista de romaneios: {e}"
 
 @app.route('/romaneios/<int:id>')
 @login_required
-def detalhe_romaneio(id): return render_template('romaneio_detalhe.html', romaneio=Romaneio.query.get_or_404(id))
+def detalhe_romaneio(id): 
+    try:
+        romaneio = Romaneio.query.get_or_404(id)
+        return render_template('romaneio_detalhe.html', romaneio=romaneio)
+    except Exception as e:
+        return f"Erro ao carregar detalhe do romaneio: {e}"
 
-# --- SALDO PENDENTE (COM FILTRO E HISTÓRICO) ---
+# --- SALDO PENDENTE (COM FILTRO E BLINDADO) ---
 @app.route('/saldo-pendente')
 @login_required
 def saldo_pendente():
@@ -168,35 +187,37 @@ def saldo_pendente():
         
         return render_template('saldo.html', pendentes=pendentes, total_ton=total_ton, total_valor=total_valor)
     except Exception as e:
-        flash(f'Erro ao carregar saldo: {e}', 'danger')
-        return redirect(url_for('index'))
+        return f"Erro ao carregar saldo pendente: {e}"
 
 @app.route('/fechar-saldo', methods=['POST'])
 @login_required
 def fechar_saldo():
-    chave = request.form.get('chave_complementar')
-    
-    pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
+    try:
+        chave = request.form.get('chave_complementar')
+        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
 
-    if not pendentes:
-        flash('Não há romaneios pendentes para fechar.', 'warning')
+        if not pendentes:
+            flash('Não há romaneios pendentes para fechar.', 'warning')
+            return redirect(url_for('saldo_pendente'))
+            
+        total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
+        total_valor = sum(r.dif_valor for r in pendentes if r.dif_valor > 0)
+
+        novo_fechamento = FechamentoAcerto(chave_nota=chave, total_toneladas=total_ton, total_valor=total_valor)
+        db.session.add(novo_fechamento)
+
+        for r in pendentes:
+            r.status = 'Faturado'
+            r.chave_complementar = chave
+            
+        db.session.commit()
+        flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados com a chave {chave}.', 'success')
         return redirect(url_for('saldo_pendente'))
-        
-    total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
-    total_valor = sum(r.dif_valor for r in pendentes if r.dif_valor > 0)
+    except Exception as e:
+        db.session.rollback()
+        return f"Erro ao fechar saldo: {e}"
 
-    novo_fechamento = FechamentoAcerto(chave_nota=chave, total_toneladas=total_ton, total_valor=total_valor)
-    db.session.add(novo_fechamento)
-
-    for r in pendentes:
-        r.status = 'Faturado'
-        r.chave_complementar = chave
-        
-    db.session.commit()
-    flash(f'✅ Acerto fechado! {len(pendentes)} romaneios baixados com a chave {chave}.', 'success')
-    return redirect(url_for('saldo_pendente'))
-
-# --- ROTA PARA RESTAURAR O HISTÓRICO (QUE FOI APAGADO) ---
+# --- ROTA PARA RESTAURAR O HISTÓRICO ---
 @app.route('/restaurar-historico')
 def restaurar_historico():
     try:
@@ -221,12 +242,10 @@ def restaurar_historico():
             romaneio_existente = Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first()
             
             if romaneio_existente:
-                # Se já existe, só atualiza o status para não perder a baixa que foi feita
                 count += 1
             else:
                 mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
                 conj = ConjuntoVeicular.query.filter_by(placa_tracionador=r["conjunto_placa"]).first() if r.get("conjunto_placa") else None
-                
                 data_ent = datetime.strptime(r["data_entrega"], '%Y-%m-%d').date()
                 
                 novo_r = Romaneio(
@@ -253,12 +272,12 @@ def restaurar_historico():
 @app.route('/importar-xml-nfe', methods=['POST'])
 @login_required
 def importar_xml_nfe():
-    arquivo = request.files.get('arquivo_xml')
-    if not arquivo or not arquivo.filename.endswith('.xml'):
-        flash('Envie um arquivo XML válido.', 'danger')
-        return redirect(url_for('saldo_pendente'))
-
     try:
+        arquivo = request.files.get('arquivo_xml')
+        if not arquivo or not arquivo.filename.endswith('.xml'):
+            flash('Envie um arquivo XML válido.', 'danger')
+            return redirect(url_for('saldo_pendente'))
+
         xml_content = arquivo.read()
         root = ET.fromstring(xml_content)
         ns = {'ns': 'http://www.portalfiscal.inf.br/nfe'}
@@ -270,13 +289,11 @@ def importar_xml_nfe():
         
         if abs(qCom - 45.0) > 0.01:
             pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
-
             saldo_restante_nota = qCom
             total_baixado = 0.0
 
             for r in pendentes:
-                if saldo_restante_nota <= 0: 
-                    break
+                if saldo_restante_nota <= 0: break
                 
                 if r.dif_peso > 0:
                     if r.dif_peso <= saldo_restante_nota:
@@ -302,27 +319,20 @@ def importar_xml_nfe():
                             conjunto_id=r.conjunto_id
                         )
                         db.session.add(novo_residual)
-                        
                         saldo_restante_nota = 0
                         total_baixado += ton_baixada
                         break
             
-            novo_fechamento = FechamentoAcerto(
-                chave_nota=chave, 
-                total_toneladas=total_baixado, 
-                total_valor=vProd,
-                tipo='Complementar'
-            )
+            novo_fechamento = FechamentoAcerto(chave_nota=chave, total_toneladas=total_baixado, total_valor=vProd, tipo='Complementar')
             db.session.add(novo_fechamento)
             db.session.commit()
             
             msg = f'✅ NF Complementar {nNF} importada! {total_baixado:.3f}t baixadas.'
             if saldo_restante_nota > 0:
-                msg += f' Atenção: Sobraram {saldo_restante_nota:.3f}t na nota sem romaneios correspondentes.'
+                msg += f' Atenção: Sobraram {saldo_restante_nota:.3f}t na nota.'
             flash(msg, 'success')
-            
         else:
-            flash(f'ℹ️ NF de Venda {nNF} (45t) importada. Ela não dá baixa no saldo.', 'info')
+            flash(f'ℹ️ NF de Venda {nNF} (45t) importada.', 'info')
 
     except Exception as e:
         db.session.rollback()
@@ -330,7 +340,7 @@ def importar_xml_nfe():
 
     return redirect(url_for('saldo_pendente'))
 
-# --- RELATÓRIOS COM FILTRO ---
+# --- RELATÓRIOS ---
 @app.route('/relatorio-saldo-pdf')
 @login_required
 def relatorio_saldo_pdf():
@@ -340,12 +350,9 @@ def relatorio_saldo_pdf():
         status_filtro = request.args.get('status', 'Pendente Complemento')
 
         query = Romaneio.query
-        if data_inicio:
-            query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
-        if data_fim:
-            query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
-        if status_filtro and status_filtro != 'Todos':
-            query = query.filter(Romaneio.status == status_filtro)
+        if data_inicio: query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
+        if data_fim: query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
+        if status_filtro and status_filtro != 'Todos': query = query.filter(Romaneio.status == status_filtro)
 
         roms = query.order_by(Romaneio.id.asc()).all()
 
@@ -363,8 +370,7 @@ def relatorio_saldo_pdf():
         pdf_buffer = gerar_pdf_saldo(roms, total_ton, total_valor, logo_filename)
         return send_file(pdf_buffer, as_attachment=True, download_name="Relatorio_Saldo_Pendente.pdf", mimetype="application/pdf")
     except Exception as e:
-        flash(f'Erro ao gerar PDF: {e}', 'danger')
-        return redirect(url_for('saldo_pendente'))
+        return f"Erro ao gerar PDF: {e}"
 
 @app.route('/relatorio-espelho-excel')
 @login_required
@@ -375,12 +381,9 @@ def relatorio_espelho_excel():
         status_filtro = request.args.get('status', 'Pendente Complemento')
 
         query = Romaneio.query
-        if data_inicio:
-            query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
-        if data_fim:
-            query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
-        if status_filtro and status_filtro != 'Todos':
-            query = query.filter(Romaneio.status == status_filtro)
+        if data_inicio: query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
+        if data_fim: query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
+        if status_filtro and status_filtro != 'Todos': query = query.filter(Romaneio.status == status_filtro)
 
         roms = query.order_by(Romaneio.id.asc()).all()
         
@@ -404,8 +407,7 @@ def relatorio_espelho_excel():
             
             ws.append([
                 i, data_pesagem, data_entrega, placa, 
-                r.numero_romaneio, 
-                r.numero_nota_original or '-', 
+                r.numero_romaneio, r.numero_nota_original or '-', 
                 r.peso_fisco, r.valor_tonelada, (r.peso_fisco * r.valor_tonelada), 
                 r.peso_real or 0, r.valor_tonelada, ((r.peso_real or 0) * r.valor_tonelada), 
                 round(r.dif_peso, 3), round(r.dif_valor, 2), r.motorista.nome if r.motorista else ''
@@ -413,10 +415,9 @@ def relatorio_espelho_excel():
         arq = io.BytesIO(); wb.save(arq); arq.seek(0)
         return send_file(arq, as_attachment=True, download_name="Relatorio_Espelho.xlsx")
     except Exception as e:
-        flash(f'Erro: {e}', 'danger')
-        return redirect(url_for('index'))
+        return f"Erro ao gerar Excel: {e}"
 
-# --- PARÂMETROS ---
+# --- PARÂMETROS E OUTROS ---
 @app.route('/configuracoes', methods=['GET', 'POST'])
 @login_required
 def configuracoes():
@@ -440,10 +441,8 @@ def configuracoes():
             return redirect(url_for('configuracoes'))
         return render_template('configuracoes.html', config=config)
     except Exception as e:
-        flash(f'Erro nos parâmetros: {e}', 'danger')
-        return redirect(url_for('index'))
+        return f"Erro em Parâmetros: {e}"
 
-# --- ESTOQUE E CUSTOS ---
 @app.route('/estoque')
 @login_required
 def painel_estoque(): return render_template('estoque.html', movimentos=[], total_entrada=0, total_saida=0, saldo_atual=0)
@@ -460,7 +459,6 @@ def listar_manutencoes(): return render_template('manutencoes.html', manutencoes
 @login_required
 def listar_multas(): return render_template('multas.html', multas=[], caminhoes=[], motoristas=[])
 
-# --- ROTAS SECRETAS ---
 @app.route('/resetar-banco-nuvem')
 def resetar_banco_nuvem():
     try:
@@ -473,7 +471,6 @@ def resetar_banco_nuvem():
         db.session.commit()
         return "✅ Banco de dados resetado com sucesso!"
     except Exception as e:
-        db.session.rollback()
         return f"❌ Erro: {e}"
 
 @app.route('/atualizar-banco-seguro')
@@ -483,9 +480,9 @@ def atualizar_banco_seguro():
             conn.execute(text("ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS numero_nota_original VARCHAR(20);"))
             conn.commit()
             db.create_all()
-        return "✅ Banco atualizado com sucesso! As colunas novas foram adicionadas."
+        return "✅ Banco atualizado com sucesso!"
     except Exception as e:
-        return f"❌ Erro ao atualizar: {e}"
+        return f"❌ Erro: {e}"
 
 if __name__ == '__main__':
     app.run(debug=True)
