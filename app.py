@@ -70,6 +70,7 @@ def inject_globals():
         {"titulo": "📊 Painel", "endpoint": "index", "grupo": "Operação"},
         {"titulo": "📦 Romaneios", "endpoint": "listar_romaneios", "grupo": "Operação"},
         {"titulo": "💰 Saldo Pendente", "endpoint": "saldo_pendente", "grupo": "Operação"},
+        {"titulo": "📑 Extrato Financeiro", "endpoint": "extrato_financeiro", "grupo": "Operação"},
         {"titulo": "📦 Estoque", "endpoint": "painel_estoque", "grupo": "Operação"},
         {"titulo": "👤 Motoristas", "endpoint": "listar_motoristas", "grupo": "Cadastros"},
         {"titulo": "🚛 Caminhões", "endpoint": "listar_caminhoes", "grupo": "Cadastros"},
@@ -106,88 +107,64 @@ def index(): return render_template('index.html')
 @app.route('/motoristas')
 @login_required
 def listar_motoristas(): 
-    try:
-        return render_template('motoristas.html', motoristas=Motorista.query.all())
-    except Exception as e:
-        return f"Erro em Motoristas: {e}"
+    return render_template('motoristas.html', motoristas=Motorista.query.all())
 
 @app.route('/caminhoes')
 @login_required
 def listar_caminhoes(): 
-    try:
-        return render_template('caminhoes.html', caminhoes=Caminhao.query.all())
-    except Exception as e:
-        return f"Erro em Caminhões: {e}"
+    return render_template('caminhoes.html', caminhoes=Caminhao.query.all())
 
 @app.route('/conjuntos', methods=['GET', 'POST'])
 @login_required
 def listar_conjuntos():
-    try:
-        if request.method == 'POST':
-            reb = ','.join([p.upper() for p in request.form.getlist('reboques[]') if p.strip()])
-            db.session.add(ConjuntoVeicular(nome_conjunto=request.form['nome_conjunto'], placa_tracionador=request.form['placa_tracionador'].upper(), placa_carreta1=reb))
-            db.session.commit(); flash('Conjunto cadastrado!', 'success')
-            return redirect(url_for('listar_conjuntos'))
-        return render_template('conjuntos.html', conjuntos=ConjuntoVeicular.query.all())
-    except Exception as e:
-        return f"Erro em Conjuntos: {e}"
+    if request.method == 'POST':
+        reb = ','.join([p.upper() for p in request.form.getlist('reboques[]') if p.strip()])
+        db.session.add(ConjuntoVeicular(nome_conjunto=request.form['nome_conjunto'], placa_tracionador=request.form['placa_tracionador'].upper(), placa_carreta1=reb))
+        db.session.commit(); flash('Conjunto cadastrado!', 'success')
+        return redirect(url_for('listar_conjuntos'))
+    return render_template('conjuntos.html', conjuntos=ConjuntoVeicular.query.all())
 
-# --- ROMANEIOS ---
+# --- ROMANEIOS E EXTRATO ---
 @app.route('/romaneios')
 @login_required
 def listar_romaneios():
     try:
-        data_inicio = request.args.get('data_inicio')
-        data_fim = request.args.get('data_fim')
-        status_filtro = request.args.get('status')
-        
-        query = Romaneio.query
-        if data_inicio:
-            query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
-        if data_fim:
-            query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
-        if status_filtro and status_filtro != 'Todos':
-            query = query.filter(Romaneio.status == status_filtro)
-            
-        romaneios = query.order_by(Romaneio.id.desc()).all()
+        romaneios = Romaneio.query.order_by(Romaneio.id.desc()).all()
         return render_template('romaneios.html', romaneios=romaneios)
     except Exception as e:
-        return f"Erro ao carregar lista de romaneios: {e}"
+        return f"Erro: {e}"
 
 @app.route('/romaneios/<int:id>')
 @login_required
 def detalhe_romaneio(id): 
+    return render_template('romaneio_detalhe.html', romaneio=Romaneio.query.get_or_404(id))
+
+# --- NOVO: EXTRATO FINANCEIRO (HISTÓRICO COMPLETO) ---
+@app.route('/extrato-financeiro')
+@login_required
+def extrato_financeiro():
     try:
-        romaneio = Romaneio.query.get_or_404(id)
-        return render_template('romaneio_detalhe.html', romaneio=romaneio)
+        # Pega todos os romaneios (pagos e pendentes) para mostrar o histórico
+        todos = Romaneio.query.order_by(Romaneio.data_criacao.asc()).all()
+        
+        # Separa o que é entrada (Romaneios) e o que é saída (Notas Complementares registradas nos fechamentos)
+        fechamentos = FechamentoAcerto.query.order_by(FechamentoAcerto.data_fechamento.asc()).all()
+        
+        return render_template('extrato.html', romaneios=todos, fechamentos=fechamentos)
     except Exception as e:
-        return f"Erro ao carregar detalhe do romaneio: {e}"
+        return f"Erro ao carregar extrato: {e}"
 
 # --- SALDO PENDENTE ---
 @app.route('/saldo-pendente')
 @login_required
 def saldo_pendente():
     try:
-        data_inicio = request.args.get('data_inicio')
-        data_fim = request.args.get('data_fim')
-        status_filtro = request.args.get('status', 'Pendente Complemento')
-
-        query = Romaneio.query
-        if data_inicio:
-            query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
-        if data_fim:
-            query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
-        if status_filtro and status_filtro != 'Todos':
-            query = query.filter(Romaneio.status == status_filtro)
-
-        pendentes = query.order_by(Romaneio.id.asc()).all()
-        
+        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
         total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
         total_valor = sum(r.dif_valor for r in pendentes if r.dif_valor > 0)
-        
         return render_template('saldo.html', pendentes=pendentes, total_ton=total_ton, total_valor=total_valor)
     except Exception as e:
-        return f"Erro ao carregar saldo pendente: {e}"
+        return f"Erro: {e}"
 
 @app.route('/fechar-saldo', methods=['POST'])
 @login_required
@@ -215,14 +192,30 @@ def fechar_saldo():
         return redirect(url_for('saldo_pendente'))
     except Exception as e:
         db.session.rollback()
-        return f"Erro ao fechar saldo: {e}"
+        return f"Erro: {e}"
 
-# --- RESTAURAR HISTÓRICO ---
+# --- LIMPEZA CIRÚRGICA (APENAS RESÍDUOS DE 0T) ---
+@app.route('/limpar-residuos-zero')
+def limpar_residuos_zero():
+    try:
+        residuos = Romaneio.query.filter(Romaneio.numero_romaneio.like('%-RES')).all()
+        count = 0
+        for r in residuos:
+            if r.dif_peso == 0:
+                db.session.delete(r)
+                count += 1
+        db.session.commit()
+        return f"✅ {count} romaneios residuais de 0t foram apagados. O histórico está limpo e o saldo mantido."
+    except Exception as e:
+        db.session.rollback()
+        return f"❌ Erro: {e}"
+
+# --- RESTAURAR HISTÓRICO E IMPORTAR XML ---
 @app.route('/restaurar-historico')
 def restaurar_historico():
     try:
         if not os.path.exists('dados_novembro.json'):
-            return "❌ Arquivo dados_novembro.json não encontrado no servidor."
+            return "❌ Arquivo dados_novembro.json não encontrado."
             
         with open('dados_novembro.json', 'r', encoding='utf-8') as f:
             dados = json.load(f)
@@ -239,11 +232,7 @@ def restaurar_historico():
 
         count = 0
         for r in dados.get("romaneios", []):
-            romaneio_existente = Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first()
-            
-            if romaneio_existente:
-                count += 1
-            else:
+            if not Romaneio.query.filter_by(numero_romaneio=r["numero_romaneio"]).first():
                 mot = Motorista.query.filter_by(cpf=r["motorista_cpf"]).first() if r.get("motorista_cpf") else None
                 conj = ConjuntoVeicular.query.filter_by(placa_tracionador=r["conjunto_placa"]).first() if r.get("conjunto_placa") else None
                 data_ent = datetime.strptime(r["data_entrega"], '%Y-%m-%d').date()
@@ -263,12 +252,10 @@ def restaurar_historico():
                 db.session.add(novo_r)
                 count += 1
         db.session.commit()
-        return f"✅ Histórico restaurado! {count} romaneios trazidos de volta ao sistema. Acesse a tela de Romaneios."
+        return f"✅ Histórico restaurado! {count} romaneios importados."
     except Exception as e:
-        db.session.rollback()
-        return f"❌ Erro ao restaurar: {e}"
+        return f"❌ Erro: {e}"
 
-# --- IMPORTAR XML ---
 @app.route('/importar-xml-nfe', methods=['POST'])
 @login_required
 def importar_xml_nfe():
@@ -329,7 +316,7 @@ def importar_xml_nfe():
             
             msg = f'✅ NF Complementar {nNF} importada! {total_baixado:.3f}t baixadas.'
             if saldo_restante_nota > 0:
-                msg += f' Atenção: Sobraram {saldo_restante_nota:.3f}t na nota.'
+                msg += f' Atenção: Sobraram {saldo_restante_nota:.3f}t.'
             flash(msg, 'success')
         else:
             flash(f'ℹ️ NF de Venda {nNF} (45t) importada.', 'info')
@@ -345,55 +332,33 @@ def importar_xml_nfe():
 @login_required
 def relatorio_saldo_pdf():
     try:
-        data_inicio = request.args.get('data_inicio')
-        data_fim = request.args.get('data_fim')
-        status_filtro = request.args.get('status', 'Pendente Complemento')
-
-        query = Romaneio.query
-        if data_inicio: query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
-        if data_fim: query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
-        if status_filtro and status_filtro != 'Todos': query = query.filter(Romaneio.status == status_filtro)
-
-        roms = query.order_by(Romaneio.id.asc()).all()
-
-        if not roms:
-            flash('Não há romaneios para o filtro selecionado.', 'warning')
+        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
+        if not pendentes:
+            flash('Não há romaneios pendentes.', 'warning')
             return redirect(url_for('saldo_pendente'))
             
         config = ConfiguracaoEmpresa.query.first()
         logo_filename = config.logo_filename if config else 'logo_padrao.png'
-        
-        total_ton = sum(r.dif_peso for r in roms if r.dif_peso > 0)
-        total_valor = sum(r.dif_valor for r in roms if r.dif_valor > 0)
+        total_ton = sum(r.dif_peso for r in pendentes if r.dif_peso > 0)
+        total_valor = sum(r.dif_valor for r in pendentes if r.dif_valor > 0)
         
         from services.gerador_pdf import gerar_pdf_saldo
-        pdf_buffer = gerar_pdf_saldo(roms, total_ton, total_valor, logo_filename)
+        pdf_buffer = gerar_pdf_saldo(pendentes, total_ton, total_valor, logo_filename)
         return send_file(pdf_buffer, as_attachment=True, download_name="Relatorio_Saldo_Pendente.pdf", mimetype="application/pdf")
     except Exception as e:
-        return f"Erro ao gerar PDF: {e}"
+        return f"Erro: {e}"
 
 @app.route('/relatorio-espelho-excel')
 @login_required
 def relatorio_espelho_excel():
     try:
-        data_inicio = request.args.get('data_inicio')
-        data_fim = request.args.get('data_fim')
-        status_filtro = request.args.get('status', 'Pendente Complemento')
-
-        query = Romaneio.query
-        if data_inicio: query = query.filter(Romaneio.data_criacao >= datetime.strptime(data_inicio, '%Y-%m-%d'))
-        if data_fim: query = query.filter(Romaneio.data_criacao <= datetime.strptime(data_fim, '%Y-%m-%d') + timedelta(days=1))
-        if status_filtro and status_filtro != 'Todos': query = query.filter(Romaneio.status == status_filtro)
-
-        roms = query.order_by(Romaneio.id.asc()).all()
-        
+        roms = Romaneio.query.filter_by(status='Pendente Complemento').order_by(Romaneio.id.asc()).all()
         if not roms:
-            flash('Não há romaneios para o filtro selecionado.', 'warning')
+            flash('Não há romaneios pendentes.', 'warning')
             return redirect(url_for('saldo_pendente'))
             
         wb = Workbook(); ws = wb.active
         ws.merge_cells('A1:N1'); ws['A1'] = "FBE FAST BIOMASS X QUEIROZ - 5.122"; ws['A1'].font = Font(bold=True, size=14); ws['A1'].alignment = Alignment(horizontal='center')
-        
         headers = ["QTD", "DATA", "DATA ENTREGA", "PLACA CAVALO", "ROMANEIO", "NOTA", "TON FISCO", "VALOR/TON", "VALOR NF", "TON ENTREGUE", "VALOR/TON", "TOTAL", "DIF FISCO", "DIF VALOR", "MOTORISTA"]
         ws.append(headers)
         for cell in ws[2]:
@@ -404,10 +369,8 @@ def relatorio_espelho_excel():
             placa = r.conjunto.placa_tracionador if r.conjunto else "N/A"
             data_pesagem = r.data_criacao.strftime('%d/%m/%Y') if r.data_criacao else ''
             data_entrega = r.data_entrega.strftime('%d/%m/%Y') if r.data_entrega else data_pesagem 
-            
             ws.append([
-                i, data_pesagem, data_entrega, placa, 
-                r.numero_romaneio, r.numero_nota_original or '-', 
+                i, data_pesagem, data_entrega, placa, r.numero_romaneio, r.numero_nota_original or '-', 
                 r.peso_fisco, r.valor_tonelada, (r.peso_fisco * r.valor_tonelada), 
                 r.peso_real or 0, r.valor_tonelada, ((r.peso_real or 0) * r.valor_tonelada), 
                 round(r.dif_peso, 3), round(r.dif_valor, 2), r.motorista.nome if r.motorista else ''
@@ -415,7 +378,7 @@ def relatorio_espelho_excel():
         arq = io.BytesIO(); wb.save(arq); arq.seek(0)
         return send_file(arq, as_attachment=True, download_name="Relatorio_Espelho.xlsx")
     except Exception as e:
-        return f"Erro ao gerar Excel: {e}"
+        return f"Erro: {e}"
 
 @app.route('/relatorio-simples-excel')
 @login_required
@@ -429,9 +392,9 @@ def relatorio_simples_excel():
         arq = io.BytesIO(); wb.save(arq); arq.seek(0)
         return send_file(arq, as_attachment=True, download_name="Relatorio_Simples.xlsx")
     except Exception as e:
-        return f"Erro ao gerar Excel Simples: {e}"
+        return f"Erro: {e}"
 
-# --- PARÂMETROS E OUTROS ---
+# --- PARÂMETROS ---
 @app.route('/configuracoes', methods=['GET', 'POST'])
 @login_required
 def configuracoes():
@@ -455,7 +418,7 @@ def configuracoes():
             return redirect(url_for('configuracoes'))
         return render_template('configuracoes.html', config=config)
     except Exception as e:
-        return f"Erro em Parâmetros: {e}"
+        return f"Erro: {e}"
 
 @app.route('/estoque')
 @login_required
