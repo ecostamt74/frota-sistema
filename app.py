@@ -132,7 +132,7 @@ def listar_conjuntos():
     except Exception as e:
         return f"Erro em Conjuntos: {e}"
 
-# --- ROMANEIOS (COM FILTRO E BLINDADO) ---
+# --- ROMANEIOS ---
 @app.route('/romaneios')
 @login_required
 def listar_romaneios():
@@ -163,7 +163,7 @@ def detalhe_romaneio(id):
     except Exception as e:
         return f"Erro ao carregar detalhe do romaneio: {e}"
 
-# --- SALDO PENDENTE (COM FILTRO E BLINDADO) ---
+# --- SALDO PENDENTE ---
 @app.route('/saldo-pendente')
 @login_required
 def saldo_pendente():
@@ -217,7 +217,7 @@ def fechar_saldo():
         db.session.rollback()
         return f"Erro ao fechar saldo: {e}"
 
-# --- ROTA PARA RESTAURAR O HISTÓRICO ---
+# --- RESTAURAR HISTÓRICO ---
 @app.route('/restaurar-historico')
 def restaurar_historico():
     try:
@@ -416,6 +416,20 @@ def relatorio_espelho_excel():
         return send_file(arq, as_attachment=True, download_name="Relatorio_Espelho.xlsx")
     except Exception as e:
         return f"Erro ao gerar Excel: {e}"
+
+@app.route('/relatorio-simples-excel')
+@login_required
+def relatorio_simples_excel():
+    try:
+        pendentes = Romaneio.query.filter_by(status='Pendente Complemento').all()
+        wb = Workbook(); ws = wb.active
+        ws.append(["Romaneio", "Motorista", "Peso Fisco", "Peso Real", "Diferença", "Valor a Receber"])
+        for r in pendentes:
+            ws.append([r.numero_romaneio, r.motorista.nome if r.motorista else '', r.peso_fisco, r.peso_real or 0, round(r.dif_peso, 3), round(r.dif_valor, 2)])
+        arq = io.BytesIO(); wb.save(arq); arq.seek(0)
+        return send_file(arq, as_attachment=True, download_name="Relatorio_Simples.xlsx")
+    except Exception as e:
+        return f"Erro ao gerar Excel Simples: {e}"
 
 # --- PARÂMETROS E OUTROS ---
 @app.route('/configuracoes', methods=['GET', 'POST'])
