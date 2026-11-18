@@ -98,36 +98,3 @@
                     <th style="padding: 10px;">Nota (Queiroz)</th>
                     <th style="padding: 10px;">Motorista</th>
                     <th style="padding: 10px;">Peso Fisco</th>
-                    <th style="padding: 10px;">Peso Real</th>
-                    <th style="padding: 10px;">Diferença</th>
-                    <th style="padding: 10px;">Valor a Receber</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for r in pendentes %}
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 10px;"><strong>#{{ r.numero_romaneio }}</strong></td>
-                    <td style="padding: 10px;">{{ r.numero_nota_original or '-' }}</td>
-                    <td style="padding: 10px;">{{ r.motorista.nome if r.motorista else '-' }}</td>
-                    <td style="padding: 10px;">{{ r.peso_fisco }}t</td>
-                    <td style="padding: 10px;">{{ r.peso_real or '-' }}t</td>
-                    <td style="padding: 10px; color: red; font-weight: bold;">{{ "%.3f"|format(r.dif_peso) }}t</td>
-                    <td style="padding: 10px; color: #16a34a; font-weight: bold;">R$ {{ "%.2f"|format(r.dif_valor) }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">Nenhum romaneio encontrado para o filtro.</td></tr>
-                {% endfor %}
-            </tbody>
-            <!-- Linha de Totais -->
-            <tfoot style="background: #f8fafc; border-top: 2px solid #e2e8f0;">
-                <tr>
-                    <td colspan="4" style="padding: 10px; text-align: right; font-weight: bold; color: #64748b;">TOTAIS:</td>
-                    <td style="padding: 10px; font-weight: bold; color: #64748b;">-</td>
-                    <td style="padding: 10px; font-weight: bold; color: red;">{{ "%.3f"|format(total_ton) }}t</td>
-                    <td style="padding: 10px; font-weight: bold; color: #16a34a;">R$ {{ "%.2f"|format(total_valor) }}</td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-</div>
-{% endblock %}
