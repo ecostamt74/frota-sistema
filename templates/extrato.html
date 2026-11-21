@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block page_title %}Extrato Financeiro{% endblock %}
+
+{% block content %}
+<h1>Extrato Financeiro (Histórico Completo)</h1>
+<p style="color: #666;">Este relatório mostra todas as entradas (romaneios) e saídas (acertos) do sistema, para conferência contábil.</p>
+
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header"><div class="card-title">Histórico de Romaneios (Entradas)</div></div>
+    <div class="table-responsive">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 2px solid #e2e8f0;">
+                    <th style="padding: 10px;">Romaneio</th>
+                    <th style="padding: 10px;">Nota</th>
+                    <th style="padding: 10px;">Status</th>
+                    <th style="padding: 10px;">Diferença (t)</th>
+                    <th style="padding: 10px;">Valor</th>
+                    <th style="padding: 10px;">Chave da Nota</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in romaneios %}
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 10px;">#{{ r.numero_romaneio }}</td>
+                    <td style="padding: 10px;">{{ r.numero_nota_original or '-' }}</td>
+                    <td style="padding: 10px;">
+                        {% if r.status == 'Faturado' %}
+                            <span style="color: green; font-weight: bold;">Faturado</span>
+                        {% else %}
+                            <span style="color: red; font-weight: bold;">Pendente</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 10px;">{{ "%.3f"|format(r.dif_peso) }}t</td>
+                    <td style="padding: 10px;">R$ {{ "%.2f"|format(r.dif_valor) }}</td>
+                    <td style="padding: 10px; font-size: 11px;">{{ r.chave_complementar or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header"><div class="card-title">Acertos Fechados (Saídas)</div></div>
+    <div class="table-responsive">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 2px solid #e2e8f0;">
+                    <th style="padding: 10px;">Data do Acerto</th>
+                    <th style="padding: 10px;">Chave da Nota</th>
+                    <th style="padding: 10px;">Toneladas Baixadas</th>
+                    <th style="padding: 10px;">Valor Baixado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in fechamentos %}
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 10px;">{{ f.data_fechamento.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td style="padding: 10px; font-size: 11px;">{{ f.chave_nota }}</td>
+                    <td style="padding: 10px; color: red;">-{{ "%.3f"|format(f.total_toneladas) }}t</td>
+                    <td style="padding: 10px; color: red;">-R$ {{ "%.2f"|format(f.total_valor) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px;">Nenhum acerto fechado via XML ou Chave.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
